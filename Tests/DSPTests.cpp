@@ -63,7 +63,7 @@ int main()
     NoDenormals denormals;
 
     // 1) Alle Abtastraten und Groessen: endlich, begrenzt, und unabhaengig von der Blockaufteilung (bit-genau)
-    for (double fs : { 22050.0, 44100.0, 48000.0, 240000.0, 192000.0 })
+    for (double fs : { 22050.0, 44100.0, 48000.0, 96000.0, 192000.0 })
         for (int size = 0; size < tumult::kNumSizes; ++size)
         {
             Params p; p.size = size; p.variety = 1.0f; p.chaos = 0.8f; p.room = 0.6f; p.ownDb = 0.0f;
@@ -99,7 +99,7 @@ int main()
     }
 
     // 3) Latenz: die eigene Stimme kommt exakt kLatencySec spaeter, sonst nichts, und ohne Menge, Raum und Eigenstimme herrscht Stille
-    for (double fs : { 44100.0, 48000.0, 240000.0 })
+    for (double fs : { 44100.0, 48000.0, 96000.0 })
     {
         std::vector<float> in ((size_t) fs, 0.0f);
         in[1000] = 0.5f;
@@ -212,7 +212,7 @@ int main()
         e2.process (l.data(), r.data(), n, p);
         CHECK (e2.rerollCount() == 3);
         double d = 0, s = 0;
-        for (size_t i = 0; i < phrase.size(); ++i) { const double x = (double) l[i] - l[i + 240000]; d += x * x; s += (double) l[i] * l[i]; }
+        for (size_t i = 0; i < phrase.size(); ++i) { const double x = (double) l[i] - l[i + 96000]; d += x * x; s += (double) l[i] * l[i]; }
         CHECK (d > 0.5 * s);   // klingt nicht gleich
 
         // "Neue Leute": der Wunsch wird in der naechsten Pause erfuellt
