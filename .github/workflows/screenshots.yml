@@ -1,0 +1,38 @@
+name: Screenshots erzeugen
+
+# Erzeugt die Oberflaechen-Bilder fuer README und Homepage aus der echten JUCE-Oberflaeche (Windows)
+# und legt sie nach docs/ ab (Hell und Dunkel, mit docs/screenshots.json). Von Hand: Actions > "Screenshots erzeugen" > "Run workflow".
+# Die Aenderung betrifft nur docs/, loest also keinen neuen Bau aus.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Konfigurieren
+        run: cmake -B build -A x64
+      - name: Screenshot-Werkzeug bauen
+        run: cmake --build build --config Release --target TumultScreenshot --parallel
+      - name: Aufnehmen
+        shell: pwsh
+        run: |
+          $docs = (Resolve-Path docs).Path
+          & "build/TumultScreenshot_artefacts/Release/TumultScreenshot.exe" $docs
+          if ($LASTEXITCODE -ne 0) { throw "Screenshot-Werkzeug ist fehlgeschlagen" }
+      - name: Bilder einchecken
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/oberflaeche-dunkel.png docs/oberflaeche-hell.png docs/screenshots.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "Screenshots fuer Version $((Get-Content VERSION -TotalCount 1).Trim()) aus der echten Oberflaeche erzeugt"
+            git push
+          } else { Write-Host "Keine Aenderung an den Screenshots" }

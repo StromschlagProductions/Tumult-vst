@@ -1,0 +1,29 @@
+name: DSP and memory safety
+# Guenstiger Linux-Lauf ohne JUCE: die Klang-Engine mit Speicher- und Fehlerpruefern (AddressSanitizer, UndefinedBehaviorSanitizer)
+on:
+  push:
+    branches: [main]
+    paths: ['Source/**', 'Tests/**', 'tools/**', 'CMakeLists.txt', 'VERSION', '.github/workflows/tests.yml']
+  pull_request:
+    branches: [main]
+    paths: ['Source/**', 'Tests/**', 'tools/**', 'CMakeLists.txt', 'VERSION', '.github/workflows/tests.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: linux-tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Configure ASan and UBSan
+        run: cmake -S . -B build -DAUDIO_DSP_ONLY=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
