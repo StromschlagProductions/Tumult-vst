@@ -181,6 +181,7 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
         sizeButtons[i].setTooltip (u8 (kSizeNote[i]));
 
     applyTheme();
+    updateMurmurStage();
     // zuletzt gespeicherte Fenstergroesse wiederherstellen (sonst 100 %)
     const int savedW = processor.uiWidth.load();
     const int restoredW = juce::jlimit (kBaseW / 2, kBaseW * 3, savedW);
@@ -199,15 +200,20 @@ void TumultEditor::updateSizeButtons (int index)
     sizeNote.setText (u8 (kSizeNote[index]), juce::dontSendNotification);
 }
 
+void TumultEditor::updateMurmurStage()
+{
+    const char* stages[] = { "Raunen", "Gemurmel", "angespannt", "aufgebracht", "Tumult" };
+    const int stage = juce::jlimit (0, 4, juce::roundToInt (processor.apvts.getRawParameterValue ("wallaInt")->load() * 4));
+    wallaStage.setText (stages[stage], juce::dontSendNotification);
+}
+
 void TumultEditor::timerCallback()
 {
     const bool wantsDark = processor.uiTheme.load() != 1;
     if (theme.dark != wantsDark) { theme = wantsDark ? darkTheme() : lightTheme(); applyTheme(); }
     const int width = processor.uiWidth.load();
     if (getWidth() != width) setSize (width, juce::roundToInt ((float) width * kBaseH / kBaseW));
-    const char* stages[] = { "Raunen", "Gemurmel", "angespannt", "aufgebracht", "Tumult" };
-    const int stage = juce::jlimit (0, 4, juce::roundToInt (processor.apvts.getRawParameterValue ("wallaInt")->load() * 4));
-    wallaStage.setText (stages[stage], juce::dontSendNotification);
+    updateMurmurStage();
     display.repaint();
 }
 

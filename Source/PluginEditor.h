@@ -106,6 +106,7 @@ private:
     void setupKnob (Knob&, const juce::String& paramId, const juce::String& text);
     void applyTheme();
     void updateSizeButtons (int index);
+    void updateMurmurStage();
     void timerCallback() override;
     static Theme darkTheme();
     static Theme lightTheme();

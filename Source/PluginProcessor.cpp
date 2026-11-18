@@ -11,6 +11,15 @@ juce::StringArray TumultProcessor::sizeNames()
 
 namespace
 {
+// JUCE 8.0.9 kann intern fraktionale Hostwerte fuer Bool behalten. Nach aussen
+// immer 0/1 liefern, passend zum diskreten APVTS-Zustand und zur Automation.
+class BinarySwitch final : public juce::AudioParameterBool
+{
+public:
+    using juce::AudioParameterBool::AudioParameterBool;
+    float getValue() const override { return get() ? 1.0f : 0.0f; }
+};
+
 constexpr float kOwnMin = -60.0f, kOwnMax = 6.0f;   // EIGENE STIMME in dB, ganz links = aus
 
 struct Preset { const char* name; int size; float amount, chaos, variety, room, ownDb, walla, wallaInt; bool enabled = true; };
@@ -127,7 +136,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout TumultProcessor::createLayou
                                                        NormalisableRange<float> (kOwnMin, kOwnMax), -3.0f, ownText));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "output", 1 }, "Output",
                                                        NormalisableRange<float> (-24.0f, 12.0f), 0.0f, decibel));
-    layout.add (std::make_unique<AudioParameterBool> (ParameterID { "wallaEnabled", 1 }, "Gemurmel an", false));
+    layout.add (std::make_unique<BinarySwitch> (ParameterID { "wallaEnabled", 1 }, "Gemurmel an", false));
     return layout;
 }
 

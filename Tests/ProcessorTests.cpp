@@ -194,6 +194,22 @@ int main()
         checkText ("chaos", "totales Chaos", 1.0f);
     }
 
+    // Auch fraktionale Host-Automation eines diskreten Schalters hat kanonischen Recall.
+    {
+        auto* sw = p->apvts.getParameter ("wallaEnabled");
+        for (float input : { 0.1f, 0.469368f, 0.51f, 0.999f })
+        {
+            sw->setValueNotifyingHost (input);
+            const float expected = input >= 0.5f ? 1.0f : 0.0f;
+            CHECK (sw->getValue() == expected);
+            juce::MemoryBlock state; p->getStateInformation (state);
+            sw->setValueNotifyingHost (1.0f - expected);
+            p->setStateInformation (state.getData(), (int) state.getSize());
+            CHECK (sw->getValue() == expected);
+            CHECK (p->apvts.getRawParameterValue ("wallaEnabled")->load() == expected);
+        }
+    }
+
     // Mono: identische Kanaele bleiben bei hohen gueltigen Pegeln sicher begrenzt.
     for (double fs : { 44100.0, 48000.0 })
     {
