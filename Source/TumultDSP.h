@@ -279,7 +279,7 @@ public:
         chunkPos = 0;
         std::fill (std::begin (stageL), std::end (stageL), 0.0f);
         std::fill (std::begin (stageR), std::end (stageR), 0.0f);
-        env = 0.0f; silentRun = hold; rerollDone = false; snap = true; norm = 0.0f;
+        env = 0.0f; silentRun = hold; rerollDone = false; snap = true; norm = 0.0f; visRef = 0.0f;
         ownCur = outCur = wetCur = 0.0f; ownInit = false;
         rerolls = 0;
         for (int i = 0; i < kMaxVoices; ++i) { visLevel[i].store (0.0f); visOn[i].store (0.0f); }
@@ -451,7 +451,6 @@ private:
             {
                 q.gL = q.gR = 0.0f; q.vis *= 0.9f;
                 q.delay = tD[i]; q.ratio = tR[i];   // unhoerbar: gleich auf den Zielwert, damit beim Zuschalten nichts gleitet
-                publish (i, c, front, false);
                 continue;
             }
 
@@ -497,9 +496,14 @@ private:
                 stageR[k] += x * (G0R + dR * (float) k);
             }
             q.vis = std::max (q.vis * 0.9f, peak * (q.gL + q.gR));
-            publish (i, c, front, active[i]);
         }
         snap = false;
+
+        // Anzeige: Helligkeit relativ zur lautesten Stimme der letzten Sekunden (unabhaengig von MENGE und Eingangspegel)
+        float loudest = 0.0f;
+        for (const auto& q : v) loudest = std::max (loudest, q.vis);
+        visRef = std::max (visRef * 0.99995f, loudest);
+        for (int i = 0; i < kMaxVoices; ++i) publish (i, c, i < c.front, active[i]);
     }
 
     void publish (int i, const SizeCfg& c, bool front, bool on)
@@ -508,7 +512,7 @@ private:
         visPan[i].store (q.pan * c.width * (front ? 0.7f : 1.0f), std::memory_order_relaxed);
         visDepth[i].store (front ? q.depthU * 0.25f : 0.3f + 0.7f * q.depthU, std::memory_order_relaxed);
         visOn[i].store (on && i < c.voices ? 1.0f : 0.0f, std::memory_order_relaxed);
-        visLevel[i].store (std::min (1.0f, q.vis * 3.0f), std::memory_order_relaxed);
+        visLevel[i].store (std::min (1.0f, q.vis / (visRef + 1e-6f)), std::memory_order_relaxed);
     }
 
     float fs = 48000.0f, window = 2880.0f;
@@ -526,7 +530,7 @@ private:
     int silentRun = 0, rerolls = 0;
     bool rerollDone = false, snap = true, ownInit = false;
     std::atomic<bool> manualReroll { false };
-    float norm = 0.0f, ownCur = 0.0f, outCur = 0.0f, wetCur = 0.0f;
+    float norm = 0.0f, ownCur = 0.0f, outCur = 0.0f, wetCur = 0.0f, visRef = 0.0f;
     float aGain = 0.01f, aDelay = 0.001f, aRatio = 0.003f;
 
     std::array<std::atomic<float>, kMaxVoices> visPan {}, visDepth {}, visOn {}, visLevel {};
