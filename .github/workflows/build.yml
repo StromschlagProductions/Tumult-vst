@@ -20,7 +20,8 @@ on:
         default: false
 
 concurrency:
-  group: windows-vst3-${{ github.ref }}-${{ (github.event_name == 'workflow_dispatch' && inputs.publish) || startsWith(github.event.head_commit.message, 'release: Tumult ') }}
+  group: >-
+    windows-vst3-${{ github.ref }}-${{ (github.event_name == 'workflow_dispatch' && inputs.publish) || startsWith(github.event.head_commit.message, 'release: Tumult ') }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 permissions:
@@ -46,7 +47,8 @@ jobs:
 
       # Schnell scheitern, bevor die Bauminuten verbraucht werden
       - name: Release vorab pruefen
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'release: Tumult '))
+        if: >-
+          (github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'release: Tumult '))
         shell: pwsh
         run: |
           if ("${{ github.ref }}" -ne "refs/heads/main") { Write-Error "Release nur auf main"; exit 1 }
@@ -57,7 +59,8 @@ jobs:
           if (-not (Test-Path "docs/releases/$env:TUMULT_VERSION.md")) { Write-Error "docs/releases/$env:TUMULT_VERSION.md fehlt"; exit 1 }
 
       - name: Screenshot-Version vor Veroeffentlichung pruefen
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'release: Tumult '))
+        if: >-
+          (github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'release: Tumult '))
         shell: pwsh
         run: |
           $v = (Get-Content VERSION -TotalCount 1).Trim()
@@ -119,7 +122,8 @@ jobs:
         run: Compress-Archive -Path "build/Tumult_artefacts/Release/VST3/Tumult.vst3" -DestinationPath "$env:ZIP_NAME"
 
       - name: Release mit ZIP erstellen
-        if: ((github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'release: Tumult '))) && github.ref == 'refs/heads/main'
+        if: >-
+          ((github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'release: Tumult '))) && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.TUMULT_VERSION }}
