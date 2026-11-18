@@ -13,7 +13,7 @@ namespace
 {
 constexpr float kOwnMin = -60.0f, kOwnMax = 6.0f;   // EIGENE STIMME in dB, ganz links = aus
 
-struct Preset { const char* name; int size; float amount, chaos, variety, room, ownDb, walla, wallaInt; };
+struct Preset { const char* name; int size; float amount, chaos, variety, room, ownDb, walla, wallaInt; bool enabled = true; };
 const Preset kPresets[] = {
     { "Kneipe",                    0, 0.70f, 0.60f, 0.70f, 0.30f, -3.0f, 0.50f, 0.25f },
     { "Kleine Demo",               1, 0.70f, 0.35f, 0.55f, 0.20f, -3.0f, 0.35f, 0.50f },
@@ -23,6 +23,7 @@ const Preset kPresets[] = {
     { "Sporthalle",                2, 0.75f, 0.50f, 0.80f, 0.55f, -6.0f, 0.40f, 0.50f },
     { "Stadion-Chor",              3, 0.80f, 0.25f, 0.80f, 0.45f, -6.0f, 0.35f, 0.60f },
     { "Stadion-Jubel",             3, 0.80f, 0.80f, 1.00f, 0.55f, -80.0f, 0.40f, 0.90f },
+    { "Ausgangslage",              1, 0.70f, 0.45f, 0.60f, 0.35f, -3.0f, 0.50f, 0.50f, false },
 };
 // Die Gemurmel-Aufnahmen (eingebettet) werden einmal dekodiert und von allen Instanzen geteilt
 static std::shared_ptr<const tumult::MurmurBank> murmurBank()
@@ -70,20 +71,44 @@ juce::AudioProcessorValueTreeState::ParameterLayout TumultProcessor::createLayou
     using namespace juce;
     AudioProcessorValueTreeState::ParameterLayout layout;
 
+    // Prozentanzeigen und Texteingaben verwenden dieselbe Einheit (auch Dezimalkomma).
+    auto number = [] (String text, float fallback)
+    {
+        text = text.trim().replaceCharacter (',', '.');
+        if (! text.containsAnyOf ("0123456789")) return fallback;
+        return text.getFloatValue();
+    };
+    auto parsePercent = [number] (const String& text)
+    { return jlimit (0.0f, 1.0f, number (text, 0.0f) * 0.01f); };
     auto percent = AudioParameterFloatAttributes().withStringFromValueFunction (
-        [] (float v, int) { return String (roundToInt (v * 100.0f)) + " %"; });
+        [] (float v, int) { return String (roundToInt (v * 100.0f)) + " %"; })
+        .withValueFromStringFunction (parsePercent);
     auto decibel = AudioParameterFloatAttributes().withStringFromValueFunction (
-        [] (float v, int) { return String (v, 1) + " dB"; });
+        [] (float v, int) { return String (v, 1) + " dB"; })
+        .withValueFromStringFunction ([number] (const String& text) { return number (text, 0.0f); });
     auto ownText = AudioParameterFloatAttributes().withStringFromValueFunction (
-        [] (float v, int) { return v <= kOwnMin + 0.05f ? String ("aus") : String (v, 1) + " dB"; });
+        [] (float v, int) { return v <= kOwnMin + 0.05f ? String ("aus") : String (v, 1) + " dB"; })
+        .withValueFromStringFunction ([number] (const String& text)
+        { return text.trim().equalsIgnoreCase ("aus") ? kOwnMin : number (text, kOwnMin); });
     auto wallaText = AudioParameterFloatAttributes().withStringFromValueFunction (
-        [] (float v, int) { return v <= 0.001f ? String ("aus") : String (roundToInt (v * 100.0f)) + " %"; });
+        [] (float v, int) { return v <= 0.001f ? String ("aus") : String (roundToInt (v * 100.0f)) + " %"; })
+        .withValueFromStringFunction (parsePercent);
     auto intText = AudioParameterFloatAttributes().withStringFromValueFunction (
-        [] (float v, int) { const char* names[] = { "Raunen", "Gemurmel", "angespannt", "aufgebracht", "Tumult" };
-                            return String (names[juce::jlimit (0, 4, roundToInt (v * 4.0f))]); });
+        [] (float v, int) { return String (roundToInt (v * 100.0f)) + " %"; })
+        .withValueFromStringFunction ([parsePercent] (const String& text)
+        {
+            const char* names[] = { "Raunen", "Gemurmel", "angespannt", "aufgebracht", "Tumult" };
+            for (int i = 0; i < 5; ++i) if (text.trim().equalsIgnoreCase (names[i])) return (float) i * 0.25f;
+            return parsePercent (text);
+        });
     auto chaosText = AudioParameterFloatAttributes().withStringFromValueFunction (
         [] (float v, int) { const int pct = roundToInt (v * 100.0f);
-                            return pct <= 0 ? u8 ("im Gleichschritt") : pct >= 100 ? String ("totales Chaos") : String (pct) + " %"; });
+            return pct <= 0 ? u8 ("im Gleichschritt") : pct >= 100 ? String ("totales Chaos") : String (pct) + " %"; })
+        .withValueFromStringFunction ([parsePercent] (const String& text)
+        {
+            if (text.trim().equalsIgnoreCase ("totales Chaos")) return 1.0f;
+            return parsePercent (text);
+        });
 
     layout.add (std::make_unique<AudioParameterChoice> (ParameterID { "size", 1 }, u8 ("Gr\xc3\xb6\xc3\x9f" "e"), sizeNames(), 1));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "amount", 1 }, "Menge",
@@ -95,13 +120,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout TumultProcessor::createLayou
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "room", 1 }, "Raum",
                                                        NormalisableRange<float> (0.0f, 1.0f), 0.35f, percent));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "walla", 1 }, "Gemurmel",
-                                                       NormalisableRange<float> (0.0f, 1.0f), 0.0f, wallaText));
+                                                       NormalisableRange<float> (0.0f, 1.0f), 0.5f, wallaText));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "wallaInt", 1 }, u8 ("Intensit\xc3\xa4t"),
                                                        NormalisableRange<float> (0.0f, 1.0f), 0.5f, intText));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "own", 1 }, "Eigene Stimme",
                                                        NormalisableRange<float> (kOwnMin, kOwnMax), -3.0f, ownText));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "output", 1 }, "Output",
                                                        NormalisableRange<float> (-24.0f, 12.0f), 0.0f, decibel));
+    layout.add (std::make_unique<AudioParameterBool> (ParameterID { "wallaEnabled", 1 }, "Gemurmel an", false));
     return layout;
 }
 
@@ -120,6 +146,7 @@ TumultProcessor::TumultProcessor()
     pOut = apvts.getRawParameterValue ("output");
     pWalla = apvts.getRawParameterValue ("walla");
     pWallaInt = apvts.getRawParameterValue ("wallaInt");
+    pWallaEnabled = apvts.getRawParameterValue ("wallaEnabled");
     // Jede Instanz bekommt ihre eigene Menge (zwei Spuren mit Tumult rufen nicht im Gleichschritt dieselben Leute)
     seed.store ((juce::Random::getSystemRandom().nextInt() | 1) & 0x7fffffff);
 }
@@ -134,7 +161,21 @@ void TumultProcessor::prepareToPlay (double sampleRate, int maxBlock)
     setLatencySamples (engine.latencySamples());   // fester Vorlauf, der Host gleicht ihn aus
 }
 
-void TumultProcessor::reset() { engine.reset(); }
+void TumultProcessor::reset() { engine.reset (seed.load()); }
+
+void TumultProcessor::rerollCrowd()
+{
+    const uint32_t next = (uint32_t) ((juce::Random::getSystemRandom().nextInt() | 1) & 0x7fffffff);
+    seed.store (next);
+    engine.requestSeed (next);
+}
+
+double TumultProcessor::getTailLengthSeconds() const
+{
+    // Das Bett erzeugt auch auf einer leeren Spur dauerhaft Audio. JUCE meldet VST3 kInfiniteTail.
+    return pWallaEnabled != nullptr && pWallaEnabled->load() >= 0.5f
+        ? std::numeric_limits<double>::infinity() : 5.0;
+}
 
 bool TumultProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
@@ -142,7 +183,7 @@ bool TumultProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
     const auto in = layouts.getMainInputChannelSet();
     if (out != juce::AudioChannelSet::mono() && out != juce::AudioChannelSet::stereo())
         return false;
-    if (in == out) return true;
+    if (in.isDisabled() || in == out) return true;
     return in == juce::AudioChannelSet::mono() && out == juce::AudioChannelSet::stereo();   // Mono rein, Stereo raus
 }
 
@@ -161,11 +202,13 @@ void TumultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     p.variety = pVariety->load();
     p.room = pRoom->load();
     p.walla = pWalla->load();
+    p.wallaEnabled = pWallaEnabled->load() >= 0.5f;
     p.wallaInt = pWallaInt->load();
     const float own = pOwn->load();
     p.ownDb = own <= kOwnMin + 0.05f ? -80.0f : own;   // ganz links = aus
     p.outDb = pOut->load();
 
+    if (getTotalNumInputChannels() == 0) buffer.clear();
     float* left = buffer.getWritePointer (0);
 
     if (numCh > 1)
@@ -186,9 +229,9 @@ void TumultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
             const int count = std::min ((int) scratchL.size(), numSamples - offset);
             std::copy_n (left + offset, count, scratchL.data());
             std::copy_n (left + offset, count, scratchR.data());
-            engine.process (scratchL.data(), scratchR.data(), count, p);
+            engine.process (scratchL.data(), scratchR.data(), count, p, true);
             for (int i = 0; i < count; ++i)
-                left[offset + i] = 0.70710678f * (scratchL[(size_t) i] + scratchR[(size_t) i]);
+                left[offset + i] = scratchL[(size_t) i];
             offset += count;
         }
     }
@@ -218,6 +261,7 @@ void TumultProcessor::setCurrentProgram (int i)
     set ("variety", pr.variety);
     set ("room", pr.room);
     set ("walla", pr.walla);
+    set ("wallaEnabled", pr.enabled ? 1.0f : 0.0f);
     set ("wallaInt", pr.wallaInt);
     set ("own", pr.ownDb <= -60.0f ? kOwnMin : pr.ownDb);
 }
@@ -230,6 +274,7 @@ void TumultProcessor::getStateInformation (juce::MemoryBlock& destData)
     state.setProperty ("uiH", uiHeight.load(), nullptr);
     state.setProperty ("program", currentProgram.load(), nullptr);
     state.setProperty ("seed", (juce::int64) seed.load(), nullptr);
+    state.setProperty ("stateVersion", 2, nullptr);
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
 }
@@ -241,13 +286,39 @@ void TumultProcessor::setStateInformation (const void* data, int sizeInBytes)
         {
             auto state = juce::ValueTree::fromXml (*xml);
             uiTheme.store ((int) state.getProperty ("theme", 0) == 1 ? 1 : 0);
-            const int width = juce::jlimit (340, 2040, (int) state.getProperty ("uiW", 820));
+            const int width = juce::jlimit (kUiWidth / 2, kUiWidth * 3, (int) state.getProperty ("uiW", 820));
             uiWidth.store (width);
             uiHeight.store (juce::roundToInt ((float) width * 420.0f / 820.0f));
             currentProgram.store (juce::jlimit (0, kNumPresets - 1, (int) state.getProperty ("program", 0)));
             // Dieselbe Menge wie beim Speichern: die Zusammensetzung haengt am gespeicherten Startwert
             const auto saved = (juce::int64) state.getProperty ("seed", (juce::int64) 0);
-            if (saved > 0 && saved <= 0x7fffffff) seed.store ((uint32_t) saved);
+            if (saved > 0 && saved <= 0x7fffffff)
+            {
+                seed.store ((uint32_t) saved);
+                engine.requestSeed ((uint32_t) saved);
+            }
+            // Alte Projekte behalten ihren Gemurmelpegel und ihr bisheriges An/Aus-Verhalten.
+            bool hasSwitch = false;
+            float oldWalla = 0.0f;
+            for (auto child : state)
+            {
+                const auto id = child.getProperty ("id").toString();
+                if (id == "wallaEnabled") hasSwitch = true;
+                if (id == "walla") oldWalla = (float) child.getProperty ("value", 0.0f);
+            }
+            if (! hasSwitch)
+            {
+                juce::ValueTree sw ("PARAM");
+                sw.setProperty ("id", "wallaEnabled", nullptr);
+                sw.setProperty ("value", oldWalla > 0.0f ? 1.0f : 0.0f, nullptr);
+                state.addChild (sw, -1, nullptr);
+                // In alten Zustaenden vor 1.2 gab es auch den Pegel noch nicht.
+                if (state.getChildWithProperty ("id", "walla").isValid() == false)
+                {
+                    juce::ValueTree level ("PARAM"); level.setProperty ("id", "walla", nullptr);
+                    level.setProperty ("value", 0.0f, nullptr); state.addChild (level, -1, nullptr);
+                }
+            }
             apvts.replaceState (state);
         }
 }

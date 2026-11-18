@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "TumultDSP.h"
+#include <limits>
 
 class TumultProcessor : public juce::AudioProcessor
 {
@@ -21,7 +22,7 @@ public:
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return 5.0; }
+    double getTailLengthSeconds() const override;
 
     // Presets (Version 1): sie setzen nur die Regler
     int getNumPrograms() override;
@@ -33,9 +34,10 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    static constexpr int kUiWidth = 820, kUiHeight = 420;
     static juce::StringArray sizeNames();
     // "Neue Leute": die Menge wird in der naechsten Sprechpause neu zusammengewuerfelt
-    void rerollCrowd() { engine.requestReroll(); }
+    void rerollCrowd();
     const tumult::Engine& crowd() const { return engine; }
 
     juce::AudioProcessorValueTreeState apvts;
@@ -46,11 +48,11 @@ private:
 
     tumult::Engine engine;
     std::vector<float> scratchL, scratchR;   // fuer Mono-Spuren (vorab angelegt)
-    std::atomic<int> currentProgram { 0 };
+    std::atomic<int> currentProgram { 8 };
     std::atomic<uint32_t> seed { 1 };
     std::atomic<float>* pSize = nullptr; std::atomic<float>* pAmount = nullptr; std::atomic<float>* pChaos = nullptr;
     std::atomic<float>* pVariety = nullptr; std::atomic<float>* pRoom = nullptr; std::atomic<float>* pOwn = nullptr;
-    std::atomic<float>* pOut = nullptr; std::atomic<float>* pWalla = nullptr; std::atomic<float>* pWallaInt = nullptr;
+    std::atomic<float>* pOut = nullptr; std::atomic<float>* pWalla = nullptr; std::atomic<float>* pWallaInt = nullptr; std::atomic<float>* pWallaEnabled = nullptr;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TumultProcessor)
 };

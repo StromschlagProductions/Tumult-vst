@@ -13,8 +13,12 @@
 5. Prüfen, ob `/releases/latest` auf ein veröffentlichtes stabiles Release mit Windows-VST3-ZIP zeigt.
 6. Die Stromschlag-Homepage liest dieses Release automatisch (Plugin-Karte mit `data-release-repo="Tumult-vst"`). Bei GitHub-API-Problemen führt ihr Fallback zur aktuellen Release-Seite.
 
-Ein Git-Push oder erfolgreicher Build ist **nicht** automatisch eine Freigabe. Keine automatische öffentliche Veröffentlichung bei jedem Commit.
+Ein gewöhnlicher Git-Push oder erfolgreicher Build ist **nicht** automatisch eine Freigabe. Ein ausdrücklich gekennzeichneter Release-Commit ist die unten beschriebene alternative Freigabe. Keine automatische öffentliche Veröffentlichung bei jedem Commit.
 
 Übergreifender Standard: https://github.com/StromschlagProductions/StromschlagProductions.github.io/blob/main/docs/RELEASE_STANDARD.md
 
 Verbindliches öffentliches Versionsschema: `docs/VERSIONING.md` (ohne Build-Suffix).
+
+## Expliziter Release-Auftrag per Commit
+
+Neben dem manuellen Workflow kann ein ausdrücklich freigegebener Push auf `main` mit der ersten Commitzeile `release: Tumult <VERSION> <Beschreibung>` die Veröffentlichung beauftragen. Die Nummer muss exakt zur Datei `VERSION` passen. Normale Pushes veröffentlichen weiterhin nichts. Der Release-Auftrag durchläuft dieselben Versions-, Screenshot-, Build-, Regressionstest- und pluginval-Prüfungen wie der manuelle publish-Lauf. Diese Alternative ermöglicht eine vom Auftraggeber autorisierte Veröffentlichung über den GitHub-Connector ohne zusätzliche Browseranmeldung.

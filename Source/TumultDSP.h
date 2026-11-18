@@ -11,10 +11,10 @@
 // Staffelung: wenige Stimmen vorne (deutlich, hell, nahe am Einsatz), die Masse dahinter (dumpfer, leiser, breiter
 // gestreut). Dahinter liegt ein Raum (Klein = Kneipe ... Stadion = Arena mit Echos).
 //
-// Die Persoenlichkeiten werden NUR in einer Sprechpause neu gewuerfelt (wenn nichts mehr nachklingt). Darum gibt es
+// Personen bleiben bis NEUE LEUTE erhalten; nur Einsatz und Beteiligung variieren in Sprechpausen. Darum gibt es
 // kein Knacken, und jede Wiederholung des Rufs klingt ein bisschen anders. Die Stimme laeuft mit einem festen Vorlauf
 // von 500 ms (Latenz), damit die Menge auch VOR dem Einsatz der eigenen Stimme einsetzen kann. Jede Stimme hat ausserdem
-// ihr eigenes Sprechtempo (bei viel CHAOS laufen manche Leute etwas schneller, andere etwas langsamer).
+// ihren begrenzten Zeitverlauf waehrend aktiver Sprache (keine unabhaengige Time-Stretch-Engine).
 //
 // Teil 2, GEMURMEL: ein Dauerbett aus Gemurmel in fuenf Stufen (leises Raunen ... aufgebrachte Menge). INTENSITAET blendet
 // stufenlos zwischen den Stufen. Jede Stufe besteht aus mehreren Aufnahmen; links und rechts laufen unabhaengige Spieler, die
@@ -106,6 +106,7 @@ struct Params
     float chaos = 0.45f;     // CHAOS: 0 = fast im Gleichschritt, 1 = voellig ungeordnet
     float variety = 0.6f;    // VIELFALT: 0 = klingen alle aehnlich, 1 = Maenner, Frauen, Jugendliche gemischt
     float room = 0.35f;      // RAUM: Anteil des Raums
+    bool wallaEnabled = true; // separater Schalter; Pegel bleibt erhalten
     float walla = 0.0f;      // GEMURMEL: Pegel des Gemurmel-Betts, 0 = aus
     float wallaInt = 0.5f;   // INTENSITAET: 0 = leises Raunen ... 1 = aufgebrachte Menge
     float ownDb = -3.0f;     // EIGENE STIMME in dB (-80 = aus)
@@ -176,6 +177,7 @@ public:
         prePos = 0; hpL = hpR = 0.0f; fade = 1.0f;
     }
     void setSize (int size) { wanted = std::clamp (size, 0, kNumSizes - 1); }
+    void configure (int size) { reset(); apply (std::clamp (size, 0, kNumSizes - 1)); }
 
     // wl, wr: nur der Raumanteil (ohne Eingang)
     void process (float in, float& wl, float& wr)
@@ -256,6 +258,48 @@ private:
     float g1 = 0.0f, g2 = 0.0f, fade = 1.0f;
 };
 
+// Zwei vorreservierte Raeume: alter Nachhall bleibt waehrend des Uebergangs erhalten.
+class Room
+{
+public:
+    void prepare (double rate)
+    {
+        fs = (float) rate;
+        for (auto& r : rooms) r.prepare (rate);
+        reset();
+    }
+    void reset()
+    {
+        for (auto& r : rooms) r.configure (1);
+        current = 0; size = wanted = nextSize = 1; transition = false; first = true; mix = 0;
+    }
+    void setSize (int target) { wanted = std::clamp (target, 0, kNumSizes - 1); }
+    void process (float input, float& l, float& r)
+    {
+        if (first) { rooms[current].configure (wanted); size = wanted; first = false; }
+        if (! transition && size != wanted)
+        {
+            nextSize = wanted;
+            rooms[1 - current].configure (nextSize);
+            transition = true; mix = 0;
+        }
+        rooms[current].process (input, l, r);
+        if (! transition) return;
+        float nl, nr;
+        rooms[1 - current].process (input, nl, nr);
+        // 500 ms lassen auch dem Stadion Zeit, seine ersten Reflexionen aufzubauen.
+        const float w = mix * mix * (3.0f - 2.0f * mix);
+        l = lerp (l, nl, w); r = lerp (r, nr, w);
+        mix = std::min (1.0f, mix + 1.0f / (0.5f * fs));
+        if (mix >= 1.0f) { current = 1 - current; size = nextSize; transition = false; }
+    }
+private:
+    Reverb rooms[2];
+    float fs = 48000, mix = 0;
+    int current = 0, size = 1, wanted = 1, nextSize = 1;
+    bool transition = false, first = true;
+};
+
 //==============================================================================
 // Die Gemurmel-Aufnahmen (mono, int16): fuenf Stufen mit je mehreren Aufnahmen. Wird vom Plugin einmal geladen und von allen
 // Instanzen geteilt; die Engine veraendert sie nie.
@@ -274,6 +318,7 @@ struct MurmurBank
 //==============================================================================
 class Engine
 {
+    friend struct EngineTestAccess; // gezielter Regressionstest der Phrasenzeit, keine GUI-Schnittstelle
 public:
     Engine() = default;
     Engine (const Engine&) = delete;
@@ -287,6 +332,7 @@ public:
         int n = 1;
         while (n < sampleCount (fs, 1.4f) + 64) n *= 2;
         ring.assign ((size_t) n, 0.0f);
+        ownSide.assign ((size_t) latency, 0.0f);
         mask = (uint32_t) n - 1u;
         rev.prepare (fs);
         aGain = 1.0f - std::exp (-(float) kChunk / (0.04f * fs));
@@ -295,6 +341,9 @@ public:
         aMix = 1.0f - std::exp (-(float) kChunk / (0.30f * fs));
         envRelease = std::exp (-1.0f / (0.03f * fs));
         settleRate = 1.0f / (0.3f * fs);
+        driftDecay = 1.0f - std::exp (-(float) kChunk / (1.111111f * fs));
+        driftNoise = 0.0127f * std::sqrt (driftDecay / 0.0003f);
+        filterStep = 1.0f / (0.03f * fs);
         baseSeed = seed ? seed : 1u;
         reset();
     }
@@ -306,8 +355,13 @@ public:
         initMurmur();
     }
 
-    void reset()
+    void reset (uint32_t seed = 0)
     {
+        if (seed != 0) baseSeed = seed;
+        pendingSeed.store (0, std::memory_order_relaxed);
+        manualReroll.store (false, std::memory_order_relaxed);
+        peopleDirty = true; phraseIndex = 0;
+        std::fill (ownSide.begin(), ownSide.end(), 0.0f); ownPos = 0;
         std::fill (ring.begin(), ring.end(), 0.0f);
         wpos = 0;
         rev.reset();
@@ -318,7 +372,7 @@ public:
         std::fill (std::begin (stageR), std::end (stageR), 0.0f);
         env = 0.0f; silentRun = 1 << 29; rerollDone = false; snap = true; norm = 0.0f; visRef = 0.0f;
         ownCur = outCur = wetCur = 0.0f; ownInit = false;
-        rerolls = 0;
+        rerolls = 0; visCounter = 0;
         initMurmur();
         for (int i = 0; i < kMaxVoices; ++i) { visLevel[i].store (0.0f); visOn[i].store (0.0f); }
     }
@@ -326,6 +380,7 @@ public:
     int latencySamples() const { return latency; }
     // Wuerfelt die Menge in der naechsten Sprechpause neu (Knopf "Neue Leute")
     void requestReroll() { manualReroll.store (true, std::memory_order_release); }
+    void requestSeed (uint32_t seed) { pendingSeed.store (seed ? seed : 1u, std::memory_order_release); }
     int rerollCount() const { return rerolls; }
 
     // Fuer die Anzeige (Oberflaeche): Lage und Aktivitaet jeder Stimme
@@ -335,7 +390,7 @@ public:
     float voiceLevel (int i) const { return visLevel[i].load (std::memory_order_relaxed); }
 
     // Eingang (links/rechts, bei Mono-Spuren beide gleich) wird durch den Ausgang ersetzt
-    void process (float* l, float* r, int n, const Params& pIn)
+    void process (float* l, float* r, int n, const Params& pIn, bool monoOutput = false)
     {
         const Params p = sanitize (pIn);
         const float ownTarget = dbToLin (p.ownDb), outTarget = dbToLin (p.outDb);
@@ -348,8 +403,12 @@ public:
         {
             if (chunkPos == 0) renderChunk (p);
 
-            float in = 0.5f * (l[i] + r[i]);
-            if (! std::isfinite (in)) in = 0.0f;
+            const float il = std::isfinite (l[i]) ? l[i] : 0.0f;
+            const float ir = std::isfinite (r[i]) ? r[i] : 0.0f;
+            const float in = 0.5f * il + 0.5f * ir;
+            const float side = ownSide[(size_t) ownPos];
+            ownSide[(size_t) ownPos] = 0.5f * il - 0.5f * ir;
+            if (++ownPos == latency) ownPos = 0;
             const float mag = std::fabs (in);
             env = std::max (mag, env * envRelease);
             if (env < kSilenceLevel) { if (silentRun < (1 << 30)) ++silentRun; }
@@ -362,12 +421,15 @@ public:
             ownCur += aSmooth * (ownTarget - ownCur);
             outCur += aSmooth * (outTarget - outCur);
             wetCur += aSmooth * (wetTarget - wetCur);
-            const float sl = stageL[chunkPos] + dry * ownCur;
-            const float sr = stageR[chunkPos] + dry * ownCur;
+            const float sl = stageL[chunkPos] + (dry + side) * ownCur;
+            const float sr = stageR[chunkPos] + (dry - side) * ownCur;
             float wl, wr;
             rev.process (0.5f * (sl + sr), wl, wr);
-            l[i] = softClip ((sl + wetCur * wl) * outCur);
-            r[i] = softClip ((sr + wetCur * wr) * outCur);
+            const float ol = (sl + wetCur * wl) * outCur;
+            const float oright = (sr + wetCur * wr) * outCur;
+            if (monoOutput)
+                l[i] = r[i] = softClip (0.5f * ol + 0.5f * oright);
+            else { l[i] = softClip (ol); r[i] = softClip (oright); }
             if (++chunkPos == kChunk) chunkPos = 0;
         }
     }
@@ -379,8 +441,11 @@ private:
     {
         // Persoenlichkeit (wird nur in der Sprechpause neu gewuerfelt)
         bool participates = true;
+        float phraseDb = 0;
         float jitter = 0, speedN = 0, semis = 0, pan = 0, depthU = 0.5f, levelDb = 0, hpHz = 200, peakHz = 1500, peakDb = 0, lpJit = 1;
         // Laufzeit
+        float speechEnv = 0, filterMix = 1;
+        Biquad oldLp;
         float acc = 0, delay = 0, ratio = 1, gL = 0, gR = 0, phase = 0.5f, driftD = 0, driftG = 0, hpState = 0, hpA = 0.02f, vis = 0;
         int filtSize = -1;
         Biquad lp, pk;
@@ -389,25 +454,29 @@ private:
     void reroll()
     {
         ++rerolls;
+        Rng people (baseSeed);
+        Rng phrase (baseSeed ^ (0x9e3779b9u * ++phraseIndex));
         for (int i = 0; i < kMaxVoices; ++i)
         {
             auto& q = v[(size_t) i];
-            q.participates = i < 6 ? true : rng.uni() < 0.88f;
-            q.jitter = std::clamp (rng.gauss() * 0.45f, -1.0f, 1.0f);
-            q.speedN = std::clamp (rng.gauss() * 0.6f, -1.0f, 1.0f);
-            q.acc = 0.0f;
-            const float kind = rng.uni();   // Maenner, Frauen, Jugendliche, Sonstige
-            const float mean = kind < 0.35f ? -0.5f : kind < 0.75f ? 0.5f : kind < 0.88f ? 1.1f : 0.0f;
-            q.semis = std::clamp (mean + rng.gauss() * 0.25f, -1.0f, 1.0f);
-            q.pan = rng.bi();
-            q.depthU = rng.uni();
-            q.levelDb = rng.gauss() * 2.0f;
-            q.hpHz = logLerp (100.0f, 320.0f, rng.uni());
-            q.peakHz = logLerp (700.0f, 3200.0f, rng.uni());
-            q.peakDb = rng.bi() * 4.0f;
-            q.lpJit = 0.85f + 0.3f * rng.uni();
-            q.filtSize = -1;
+            if (peopleDirty)
+            {
+                const float kind = people.uni();
+                const float mean = kind < 0.35f ? -0.5f : kind < 0.75f ? 0.5f : kind < 0.88f ? 1.1f : 0.0f;
+                q.semis = std::clamp (mean + people.gauss() * 0.25f, -1.0f, 1.0f);
+                q.pan = people.bi(); q.depthU = people.uni(); q.levelDb = people.gauss() * 2.0f;
+                q.hpHz = logLerp (100.0f, 320.0f, people.uni());
+                q.peakHz = logLerp (700.0f, 3200.0f, people.uni());
+                q.peakDb = people.bi() * 4.0f; q.lpJit = 0.85f + 0.3f * people.uni();
+                q.filtSize = -1;
+            }
+            q.participates = i < 6 || phrase.uni() < 0.88f;
+            q.jitter = std::clamp (phrase.gauss() * 0.45f, -1.0f, 1.0f);
+            q.speedN = std::clamp (phrase.gauss() * 0.6f, -1.0f, 1.0f);
+            q.phraseDb = phrase.bi();
+            q.acc = 0.0f; q.speechEnv = 0.0f;
         }
+        peopleDirty = false;
         snap = true;
     }
 
@@ -416,7 +485,11 @@ private:
         const bool front = index < c.front;
         const float depth = front ? q.depthU * 0.25f : 0.3f + 0.7f * q.depthU;
         const float lpHz = lerp (11000.0f, c.backDark, depth) * q.lpJit;
+        const bool firstFilter = q.filtSize < 0;
+        // Eine laufende Ueberblendung erst abschliessen; danach folgt der neueste Zielwert.
+        q.oldLp = q.lp;
         q.lp.lowpass (lpHz, 0.6f, fs);
+        q.filterMix = firstFilter ? 1.0f : 0.0f;
         q.pk.peaking (q.peakHz, 0.9f, q.peakDb, fs);
         q.hpA = 1.0f - std::exp (-2.0f * kPi * q.hpHz / fs);
         q.filtSize = size;
@@ -444,7 +517,14 @@ private:
         if (silentRun >= hold)
         {
             const bool manual = manualReroll.exchange (false, std::memory_order_acq_rel);
-            if (! rerollDone || manual) { reroll(); rerollDone = true; }
+            const uint32_t requested = pendingSeed.exchange (0, std::memory_order_acq_rel);
+            if (requested != 0 || manual)
+            {
+                baseSeed = requested != 0 ? requested : Rng (baseSeed).next();
+                peopleDirty = true; phraseIndex = 0;
+                rng = Rng (baseSeed);
+            }
+            if (! rerollDone || manual || requested != 0) { reroll(); rerollDone = true; }
         }
 
         const float semisScale = 0.8f + 5.2f * p.variety;
@@ -459,19 +539,21 @@ private:
             auto& q = v[(size_t) i];
             const bool front = i < c.front;
             active[i] = i < c.voices && q.participates;
-            if (q.filtSize != p.size) setupFilters (q, i, c, p.size);
+            if (q.filtSize != p.size && q.filterMix >= 1.0f) setupFilters (q, i, c, p.size);
 
             // Eigenes Sprechtempo: die Stimme laeuft langsam davon (oder hinterher), bis zur Sperre kAccMaxSec
-            q.acc = std::clamp (q.acc + (-q.speedN * kSpeedMax * p.chaos) * (float) kChunk, -accMax, accMax);
-            q.driftD += -0.0003f * q.driftD + 0.0127f * rng.bi();
-            q.driftG += -0.0003f * q.driftG + 0.0127f * rng.bi();
+            if (q.speechEnv >= kSilenceLevel)
+                q.acc = std::clamp (q.acc + (-q.speedN * kSpeedMax * p.chaos) * (float) kChunk, -accMax, accMax);
+            else q.acc = std::clamp (q.acc, -accMax, accMax);
+            q.driftD += -driftDecay * q.driftD + driftNoise * rng.bi();
+            q.driftG += -driftDecay * q.driftG + driftNoise * rng.bi();
 
             const float depth = front ? q.depthU * 0.25f : 0.3f + 0.7f * q.depthU;
             const float jitter = q.jitter * spread * (front ? 0.5f : 1.0f);
             tD[i] = std::max ((float) kMinDelay, (float) latency + (jitter + q.driftD * 0.004f) * fs + q.acc - 0.5f * window);
             const float semis = q.semis * semisScale * (front ? 0.5f : 1.0f);
-            tR[i] = std::fabs (semis) < 0.5f ? 1.0f : std::pow (2.0f, semis / 12.0f);
-            const float db = q.levelDb + q.driftG * 1.5f + (front ? 0.0f : -4.0f - 8.0f * depth);
+            tR[i] = std::fabs (semis) < 0.001f ? 1.0f : std::pow (2.0f, semis / 12.0f);
+            const float db = q.levelDb + q.phraseDb + q.driftG * 1.5f + (front ? 0.0f : -4.0f - 8.0f * depth);
             tG[i] = active[i] ? dbToLin (db) : 0.0f;
             power += tG[i] * tG[i];
         }
@@ -487,13 +569,14 @@ private:
             const bool front = i < c.front;
             const float amp = tG[i] * norm * amountGain;
             const float angle = (q.pan * c.width * (front ? 0.7f : 1.0f) + 1.0f) * (kPi * 0.25f);
-            const float tL = amp * std::cos (angle), tRr = amp * std::sin (angle);
+            const float tL = amp > 0.0f ? amp * std::cos (angle) : 0.0f;
+            const float tRr = amp > 0.0f ? amp * std::sin (angle) : 0.0f;
 
             if (snap) { q.delay = tD[i]; q.ratio = tR[i]; q.gL = tL; q.gR = tRr; }
             // Eine nicht beteiligte Stimme, die schon ganz leise ist, braucht nicht gerechnet zu werden
             if (tL == 0.0f && tRr == 0.0f && q.gL < 1e-7f && q.gR < 1e-7f)
             {
-                q.gL = q.gR = 0.0f; q.vis *= 0.995f;
+                q.gL = q.gR = 0.0f; q.vis *= 0.995f; q.speechEnv = 0.0f;
                 q.delay = tD[i]; q.ratio = tR[i];   // unhoerbar: gleich auf den Zielwert, damit beim Zuschalten nichts gleitet
                 continue;
             }
@@ -533,14 +616,24 @@ private:
                     if (pb >= 1.0f) pb -= 1.0f;
                     x += gB * readTap (t, D + pb * window);
                 }
+                q.speechEnv = std::max (std::fabs (x), q.speechEnv * envRelease);
                 q.hpState += q.hpA * (x - q.hpState);
-                x = q.pk.process (q.lp.process (x - q.hpState));
+                const float high = x - q.hpState;
+                float filtered = q.lp.process (high);
+                if (q.filterMix < 1.0f)
+                {
+                    filtered = lerp (q.oldLp.process (high), filtered, q.filterMix);
+                    q.filterMix = std::min (1.0f, q.filterMix + filterStep);
+                }
+                x = q.pk.process (filtered);
                 peak = std::max (peak, std::fabs (x));
                 stageL[k] += x * (G0L + dL * (float) k);
                 stageR[k] += x * (G0R + dR * (float) k);
             }
             q.vis = std::max (q.vis * 0.995f, peak * (q.gL + q.gR));   // Huellkurve mit ca. 70 ms Abklingzeit
         }
+        const bool publishNow = snap || ++visCounter >= 8;
+        if (publishNow) visCounter = 0;
         snap = false;
         renderMurmur (p);
 
@@ -548,7 +641,8 @@ private:
         float loudest = 0.0f;
         for (const auto& q : v) loudest = std::max (loudest, q.vis);
         visRef = std::max (visRef * 0.99995f, loudest);
-        for (int i = 0; i < kMaxVoices; ++i) publish (i, c, i < c.front, active[i]);
+        if (publishNow)
+            for (int i = 0; i < kMaxVoices; ++i) publish (i, c, i < c.front, active[i]);
     }
 
     void publish (int i, const SizeCfg& c, bool front, bool on)
@@ -646,8 +740,8 @@ private:
         wT[lo] = std::cos (fr * kPi * 0.5f);
         wT[lo + 1] = std::sin (fr * kPi * 0.5f);
         const float tilt = dbToLin (3.0f * p.wallaInt);   // je aufgebrachter, desto etwas lauter
-        const float gT = p.walla * p.walla * kMurmurCal * tilt;
-        if (! mInit) { for (int i = 0; i < kNumMurmurLevels; ++i) mW[i] = wT[i]; mG = gT; mInit = true; }
+        const float gT = p.wallaEnabled ? p.walla * p.walla * kMurmurCal * tilt : 0.0f;
+        if (! mInit) { for (int i = 0; i < kNumMurmurLevels; ++i) mW[i] = wT[i]; mG = 0.0f; mInit = true; }
         if (gT < 1e-6f && mG < 1e-6f) { mG = 0.0f; return; }
 
         float w0[kNumMurmurLevels], dw[kNumMurmurLevels];
@@ -655,7 +749,14 @@ private:
         {
             w0[i] = mW[i];
             mW[i] += aMix * (wT[i] - mW[i]);
-            dw[i] = (mW[i] - w0[i]) * (1.0f / (float) kChunk);
+        }
+        float weightPower = 0.0f;
+        for (float w : mW) weightPower += w * w;
+        const float weightNorm = 1.0f / std::sqrt (std::max (weightPower, 1e-12f));
+        for (int i = 0; i < kNumMurmurLevels; ++i)
+        {
+            mW[i] *= weightNorm;
+            dw[i] = (mW[i] - w0[i]) / (float) kChunk;
         }
         const float g0 = mG;
         mG += aGain * (gT - mG);
@@ -687,20 +788,24 @@ private:
 
     float fs = 48000.0f, window = 2880.0f;
     int latency = 24000;
-    std::vector<float> ring;
+    std::vector<float> ring, ownSide;
+    int ownPos = 0;
     uint32_t mask = 0, wpos = 0;
-    Reverb rev;
+    Room rev;
     std::array<Voice, kMaxVoices> v;
     Rng rng { 1 };
-    uint32_t baseSeed = 1;
+    uint32_t baseSeed = 1, phraseIndex = 0;
+    std::atomic<uint32_t> pendingSeed { 0 };
+    bool peopleDirty = true;
 
     float stageL[kChunk] = {}, stageR[kChunk] = {};
     int chunkPos = 0;
     float env = 0.0f, envRelease = 0.99f, settleRate = 1e-4f;
-    int silentRun = 0, rerolls = 0;
+    int silentRun = 0, rerolls = 0, visCounter = 0;
     bool rerollDone = false, snap = true, ownInit = false;
     std::atomic<bool> manualReroll { false };
     float norm = 0.0f, ownCur = 0.0f, outCur = 0.0f, wetCur = 0.0f, visRef = 0.0f;
+    float driftDecay = 0.0003f, driftNoise = 0.0127f, filterStep = 0.001f;
     float aGain = 0.01f, aDelay = 0.001f, aRatio = 0.003f;
 
     std::array<std::atomic<float>, kMaxVoices> visPan {}, visDepth {}, visOn {}, visLevel {};
