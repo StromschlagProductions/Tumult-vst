@@ -36,7 +36,7 @@ int main()
 
     // Alle Presets laden, jedes liefert endliche, begrenzte Ausgabe bei jeder Blockgroesse ohne Speicheranforderung
     {
-        CHECK (p->getNumPrograms() == 8);
+        CHECK (p->getNumPrograms() == 9);
         juce::AudioBuffer<float> b (2, 8193);
         double energy = 0;
         int offset = 0;
@@ -65,6 +65,7 @@ int main()
             CHECK (prm != nullptr);
             prm->setValueNotifyingHost (prm->convertTo0to1 (v));
         };
+        setParam ("wallaEnabled", 1.0f);
         setParam ("amount", 0.0f); setParam ("own", -60.0f); setParam ("room", 0.0f); setParam ("walla", 0.7f);
         double lowE = 0, highE = 0;
         for (float x : { 0.0f, 1.0f })
@@ -90,7 +91,7 @@ int main()
             (x == 0.0f ? lowE : highE) = d / e;   // Anteil hoher Frequenzen
         }
         CHECK (highE > lowE);   // die obere Stufe klingt heller als die untere
-        setParam ("walla", 0.0f); setParam ("amount", 0.7f); setParam ("own", -3.0f); setParam ("room", 0.35f);
+        setParam ("wallaEnabled", 0.0f); setParam ("walla", 0.0f); setParam ("amount", 0.7f); setParam ("own", -3.0f); setParam ("room", 0.35f);
         p->reset();
     }
 
@@ -154,7 +155,7 @@ int main()
         CHECK (q->getCurrentProgram() == 6);
         CHECK (q->uiTheme.load() == 1);
         CHECK (q->uiWidth.load() == 900);
-        for (auto* id : { "size", "amount", "chaos", "variety", "walla", "wallaInt", "room", "own", "output" })
+        for (auto* id : { "size", "amount", "chaos", "variety", "walla", "wallaInt", "wallaEnabled", "room", "own", "output" })
             CHECK (q->apvts.getRawParameterValue (id)->load() == p->apvts.getRawParameterValue (id)->load());
         CHECK ((int) q->apvts.getRawParameterValue ("size")->load() == 3);
 
@@ -173,6 +174,135 @@ int main()
         const char junk[] = "not a state";
         q->setStateInformation (junk, (int) sizeof (junk));
         CHECK (q->getCurrentProgram() == 6);
+    }
+
+    // Wertefelder: Prozent, Dezimalkomma, aus und Intensitaetsnamen sind round-trip-faehig.
+    {
+        auto checkText = [&] (const char* id, const juce::String& text, float expected)
+        {
+            auto* param = p->apvts.getParameter (id);
+            const float actual = param->convertFrom0to1 (param->getValueForText (text));
+            CHECK (std::abs (actual - expected) < 1e-5f);
+        };
+        for (auto* id : { "amount", "chaos", "variety", "room", "walla", "wallaInt" })
+        {
+            checkText (id, "70 %", 0.7f);
+            checkText (id, "12,5 %", 0.125f);
+        }
+        checkText ("own", "aus", -60.0f); checkText ("own", "-3,5 dB", -3.5f);
+        checkText ("walla", "aus", 0.0f); checkText ("wallaInt", "angespannt", 0.5f);
+        checkText ("chaos", "totales Chaos", 1.0f);
+    }
+
+    // Auch fraktionale Host-Automation eines diskreten Schalters hat kanonischen Recall.
+    {
+        auto* sw = p->apvts.getParameter ("wallaEnabled");
+        for (float input : { 0.1f, 0.469368f, 0.51f, 0.999f })
+        {
+            sw->setValueNotifyingHost (input);
+            const float expected = input >= 0.5f ? 1.0f : 0.0f;
+            CHECK (sw->getValue() == expected);
+            juce::MemoryBlock state; p->getStateInformation (state);
+            sw->setValueNotifyingHost (1.0f - expected);
+            p->setStateInformation (state.getData(), (int) state.getSize());
+            CHECK (sw->getValue() == expected);
+            CHECK (p->apvts.getRawParameterValue ("wallaEnabled")->load() == expected);
+        }
+    }
+
+    // Mono: identische Kanaele bleiben bei hohen gueltigen Pegeln sicher begrenzt.
+    for (double fs : { 44100.0, 48000.0 })
+    {
+        layout.inputBuses.set (0, juce::AudioChannelSet::mono());
+        layout.outputBuses.set (0, juce::AudioChannelSet::mono());
+        CHECK (p->setBusesLayout (layout));
+        auto set = [&] (const char* id, float value) { auto* v = p->apvts.getParameter (id); v->setValueNotifyingHost (v->convertTo0to1 (value)); };
+        set ("amount", 0); set ("room", 0); set ("own", 6); set ("output", 12); set ("wallaEnabled", 0);
+        p->prepareToPlay (fs, 512);
+        juce::AudioBuffer<float> b (1, 512);
+        double peak = 0;
+        for (int block = 0; block < 120; ++block)
+        {
+            for (int i = 0; i < 512; ++i) b.setSample (0, i, 0.8f * std::sin (0.1f * (float) (block * 512 + i)));
+            { NoAllocations guard; p->processBlock (b, midi); }
+            for (int i = 0; i < 512; ++i) { const float x = b.getSample (0, i); CHECK (std::abs (x) <= 1.0f); peak = std::max (peak, (double) std::abs (x)); }
+        }
+        CHECK (peak > 0.9);
+    }
+
+    // Generatorbetrieb mit deaktiviertem Eingang; Schalter, Projektzustand und Pegel sind unabhaengig.
+    {
+        layout.inputBuses.set (0, juce::AudioChannelSet::disabled());
+        layout.outputBuses.set (0, juce::AudioChannelSet::stereo());
+        CHECK (p->setBusesLayout (layout));
+        p->setCurrentProgram (8);
+        CHECK (std::isfinite (p->getTailLengthSeconds()));
+        auto* sw = p->apvts.getParameter ("wallaEnabled"); sw->setValueNotifyingHost (1);
+        CHECK (std::isinf (p->getTailLengthSeconds()));
+        p->prepareToPlay (48000, 256);
+        juce::AudioBuffer<float> b (2, 256);
+        double e = 0;
+        for (int block = 0; block < 400; ++block)
+        {
+            // Der Generator darf nicht von zufaelligem Inhalt unbenutzter Eingangskanaele abhaengen.
+            fill (b, block * 256);
+            { NoAllocations guard; p->processBlock (b, midi); }
+            for (int i = 0; i < 256; ++i) e += (double) b.getSample (0, i) * b.getSample (0, i);
+        }
+        CHECK (e > 1e-3);
+        const float level = p->apvts.getRawParameterValue ("walla")->load();
+        sw->setValueNotifyingHost (0);
+        for (int block = 0; block < 400; ++block) { b.clear(); p->processBlock (b, midi); }
+        CHECK (p->apvts.getRawParameterValue ("walla")->load() == level);
+        double tail = 0; for (int i = 0; i < 256; ++i) tail += std::abs (b.getSample (0, i));
+        CHECK (tail < 1e-4);
+        layout.inputBuses.set (0, juce::AudioChannelSet::stereo()); CHECK (p->setBusesLayout (layout));
+    }
+
+    // State nach prepareToPlay: die gewaehlten Personen werden auch ohne erneutes Prepare uebernommen.
+    {
+        p->setCurrentProgram (2); p->rerollCrowd(); p->uiWidth.store (2460);
+        juce::MemoryBlock state; p->getStateInformation (state);
+        auto q = std::make_unique<TumultProcessor>();
+        q->prepareToPlay (48000, 256);
+        q->setStateInformation (state.getData(), (int) state.getSize());
+        CHECK (q->uiWidth.load() == 2460);
+        p->prepareToPlay (48000, 256);
+        juce::AudioBuffer<float> a (2, 256), b (2, 256);
+        // Das Bett hat seinen eigenen laufenden Abspielzustand; hier wird die Besetzung verglichen.
+        for (auto* proc : { p.get(), q.get() }) proc->apvts.getParameter ("wallaEnabled")->setValueNotifyingHost (0);
+        for (int block = 0; block < 400; ++block)
+        {
+            fill (a, block * 256); b.makeCopyOf (a);
+            { NoAllocations guard; p->processBlock (a, midi); }
+            { NoAllocations guard; q->processBlock (b, midi); }
+            for (int ch = 0; ch < 2; ++ch) for (int i = 0; i < 256; ++i) CHECK (a.getSample (ch, i) == b.getSample (ch, i));
+        }
+        // Migration alter 1.2-Zustaende: Gemurmel bleibt an, wenn bisher ein Pegel eingestellt war.
+        auto xml = juce::AudioProcessor::getXmlFromBinary (state.getData(), (int) state.getSize());
+        CHECK (xml != nullptr);
+        auto tree = juce::ValueTree::fromXml (*xml);
+        tree.removeChild (tree.getChildWithProperty ("id", "wallaEnabled"), nullptr);
+        juce::MemoryBlock legacy;
+        auto oldXml = tree.createXml(); juce::AudioProcessor::copyXmlToBinary (*oldXml, legacy);
+        q->setStateInformation (legacy.getData(), (int) legacy.getSize());
+        CHECK (q->apvts.getRawParameterValue ("wallaEnabled")->load() == 1.0f);
+    }
+
+    // Host-Bypass behaelt die gemeldeten 500 ms bei und erhaelt Stereo.
+    for (double fs : { 44100.0, 48000.0 })
+    {
+        p->setCurrentProgram (8);
+        layout.inputBuses.set (0, juce::AudioChannelSet::stereo());
+        layout.outputBuses.set (0, juce::AudioChannelSet::stereo()); CHECK (p->setBusesLayout (layout));
+        p->prepareToPlay (fs, (int) fs);
+        juce::AudioBuffer<float> b (2, (int) fs); b.clear();
+        b.setSample (0, 100, 0.5f); b.setSample (1, 100, -0.25f);
+        { NoAllocations guard; p->processBlockBypassed (b, midi); }
+        const int at = 100 + (int) std::lround (fs * 0.5);
+        CHECK (std::abs (b.getSample (0, at) - 0.5f) < 1e-6f);
+        CHECK (std::abs (b.getSample (1, at) + 0.25f) < 1e-6f);
+        for (int i = 0; i < at; ++i) CHECK (std::abs (b.getSample (0, i)) < 1e-12f);
     }
 
     // Die Oberflaeche laesst sich anlegen und wieder abbauen (alle Looks)

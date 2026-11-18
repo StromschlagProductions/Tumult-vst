@@ -55,13 +55,11 @@ verkleinern. Das Seitenverhältnis bleibt dabei fest.
   Stimmen, die Streuung des Einsatzes, die Breite im Stereobild, die Dumpfheit der hinteren Reihen und der Raum.
 - **Staffelung:** Wenige Stimmen stehen vorne und sind deutlich, hell und nah am Einsatz. Die Masse dahinter ist dumpfer,
   leiser und breiter gestreut. So entsteht Tiefe, statt dass alle gleich weit weg sind.
-- **Jeder Ruf klingt anders:** In jeder Sprechpause (je nach CHAOS und Größe ab etwa einer halben bis einer Sekunde Stille) würfelt TUMULT die Menge neu: wer
-  mitruft, wer früher oder später kommt, welche Stimmlage jeder hat. Mitten im Ruf ändert sich nie etwas, deshalb knackt
-  nichts. **NEUE LEUTE** würfelt von Hand neu, ebenfalls in der nächsten Pause.
+- **Stabile Besetzung, wechselnde Rufe:** Position und Stimmcharakter bleiben bis **NEUE LEUTE** erhalten. In jeder Sprechpause (je nach CHAOS und Größe ab etwa einer halben bis einer Sekunde Stille) variieren Beteiligung, Einsatz und Ausdruck. Die Personen ziehen dabei nicht nach jedem Ruf an einen anderen Ort. **NEUE LEUTE** würfelt von Hand neu, ebenfalls in der nächsten Pause.
 - **Fester Vorlauf von 500 ms:** TUMULT meldet ihn dem Host, der ihn ausgleicht. Dadurch darf ein Teil der Menge auch **vor** dem
-  Einsatz deiner Stimme beginnen, so wie es in einer echten Menge ist, in der ein paar Leute früher anfangen. Mit CHAOS verteilt sich der Einsatz weit: manche rufen deutlich vor dir, andere erst eine Weile danach. Jeder hat außerdem sein eigenes Sprechtempo, einer etwas schneller, ein anderer etwas langsamer.
+  Einsatz deiner Stimme beginnen, so wie es in einer echten Menge ist, in der ein paar Leute früher anfangen. Mit CHAOS verteilt sich der Einsatz weit: manche rufen deutlich vor dir, andere erst eine Weile danach. Während aktiver Sprache entwickeln sich zusätzlich begrenzte individuelle Zeitversätze. Das ist keine unabhängige Time-Stretch- oder Formant-Engine.
 
-- **Gemurmel im Hintergrund:** Unter den Rufen läuft ein Dauerbett aus Gemurmel in fünf Stufen (Raunen, Gemurmel, angespannt, aufgebracht, Tumult). INTENSITÄT blendet stufenlos zwischen den Stufen, PEGEL regelt die Lautstärke. Das Gemurmel wiederholt sich nicht hörbar: Jede Stufe besteht aus mehreren Aufnahmen, links und rechts laufen unabhängig voneinander, immer wieder an anderer Stelle und weich überblendet. Es geht durch denselben Raum wie die Menge und läuft auch ohne Eingang, also auch allein als Hintergrundmenge (MENGE auf null, EIGENE STIMME aus).
+- **Gemurmel im Hintergrund:** Unter den Rufen läuft ein Dauerbett aus Gemurmel in fünf Stufen (Raunen, Gemurmel, angespannt, aufgebracht, Tumult). **AN / AUS** aktiviert das Bett unabhängig von der Eingangsstimme, **PEGEL** regelt seine Lautstärke und bleibt beim Ausschalten erhalten. **INTENSITÄT** blendet stufenlos zwischen den Stufen. Zufällige Ausschnitte und Wechsel reduzieren feste Wiederholungen: Die fünf Stufen besitzen vier, vier, eine, drei und zwei Aufnahmen; links und rechts laufen unabhängig voneinander, immer wieder an anderer Stelle und weich überblendet. Es geht durch denselben Raum wie die Menge und läuft auch ohne Eingang, also auch allein als Hintergrundmenge (MENGE auf null, EIGENE STIMME aus).
 
 ## Größen
 
@@ -72,7 +70,7 @@ verkleinern. Das Seitenverhältnis bleibt dabei fest.
 | Groß | Halle, Sporthalle, große Versammlung | 40 | langer Raum, ein Echo von den Wänden |
 | Stadion | Arena, Fußballstadion | 64 | langer Nachhall, zwei Echos von den Rängen |
 
-Beim Umschalten blendet TUMULT weich über, die Größe lässt sich also auch mitten in der Szene automatisieren.
+Beim Umschalten gleiten die Stimmenpegel und Filter; zwei vorreservierte Räume überblenden mit erhaltener alter Hallfahne über etwa eine halbe Sekunde. Die Größe lässt sich automatisieren.
 
 ## Regler (alle automatisierbar)
 
@@ -90,15 +88,16 @@ Beim Umschalten blendet TUMULT weich über, die Größe lässt sich also auch mi
 | Kasten | Regler | Wirkung |
 |---|---|---|
 | **CHOR** | CHAOS | 0 % fast im Gleichschritt wie ein eingeübter Sprechchor, 100 % ein ungeordneter Haufen mit weit gestreutem Einsatz (im Stadion über eine Drittelsekunde) und unterschiedlichem Sprechtempo. Wie weit der Einsatz gestreut wird, hängt außerdem von der Größe ab |
-| | VIELFALT | 0 % klingen alle ähnlich wie eine Gruppe, 100 % mischen sich tiefere und höhere Lagen (Männer, Frauen, Jugendliche, bis etwa sechs Halbtöne) mit eigenen Klangfärbungen |
-| **GEMURMEL** | PEGEL | Lautstärke des Gemurmels im Hintergrund, ganz links aus |
+| | VIELFALT | 0 % klingen alle ähnlich wie eine Gruppe, 100 % entstehen stärker unterschiedliche Tonlagen (bis etwa sechs Halbtöne) mit eigenen Klangfärbungen; Alter und Geschlecht werden nicht unabhängig modelliert |
+| **GEMURMEL** | AN / AUS | Aktiviert das eigenständige Bett, auch auf einer leeren Spur ohne Aufnahme; automatisierbar und im Projekt gespeichert |
+| | PEGEL | Lautstärke des Gemurmels im Hintergrund, ganz links aus |
 | | INTENSITÄT | 0 % leises Raunen, in der Mitte angespannt, 100 % aufgebrachte Menge; die fünf Stufen blenden stufenlos ineinander, je aufgebrachter, desto etwas lauter |
 | **RAUM** | RAUM | Wieviel Raum die Menge bekommt. Der Raum folgt der Größe. Er liegt auch auf der eigenen Stimme, damit sie in der Menge steht |
-| **MIX** | EIGENE STIMME | dein eingesprochenes Original (mit 500 ms Vorlauf), ganz links aus |
-| | OUTPUT | Gesamtpegel am Ausgang |
+| **MIX** | EIGENE STIMME | dein eingesprochenes Original, in Stereo erhalten (mit 500 ms Vorlauf), ganz links aus |
+| | OUTPUT | Gesamtpegel vor der Schutzsättigung am Ausgang; hohe Werte können den Klang verdichten |
 
 **Presets** (erscheinen in der Preset-Liste des Hosts, setzen nur die Regler): Kneipe, Kleine Demo, Protestzug, Marktplatz,
-Großdemo auf dem Platz, Sporthalle, Stadion-Chor und Stadion-Jubel. Sie stellen auch das Gemurmel passend ein.
+Großdemo auf dem Platz, Sporthalle, Stadion-Chor, Stadion-Jubel und Ausgangslage. Die acht Szenen-Presets schalten auch das Gemurmel passend ein; Ausgangslage startet mit ausgeschaltetem Bett. Presets verändern OUTPUT nicht, damit dein eingestellter Gesamtpegel erhalten bleibt.
 
 ## Anwendung
 
@@ -112,7 +111,7 @@ sauber der Chor im Takt ist.
 
 **Kneipe, in der ein paar Leute zustimmend rufen:** Klein, MENGE etwas zurück, EIGENE STIMME als Hauptstimme dazu.
 
-**Nur Gemurmel:** MENGE auf null, EIGENE STIMME aus, PEGEL und INTENSITÄT nach Szene: leises Raunen vor der Kundgebung, angespannt beim Warten, aufgebracht kurz vor dem Ausbruch. Die Intensität lässt sich automatisieren, die Menge wird also im Lauf der Szene unruhiger.
+**Nur Gemurmel:** Eine leere Mono- oder Stereo-Audiospur anlegen, TUMULT als Insert einsetzen, MENGE auf null, EIGENE STIMME aus und GEMURMEL auf **AN**. PEGEL und INTENSITÄT nach Szene: leises Raunen vor der Kundgebung, angespannt beim Warten, aufgebracht kurz vor dem Ausbruch. Schalter, Pegel und Intensität lassen sich automatisieren. Die DAW muss das Plugin verarbeiten; das konkrete Stop-/Suspend-Verhalten hängt vom Host ab. TUMULT meldet bei aktiviertem Bett eine unbegrenzte Ausklingzeit.
 
 **Mit echten Aufnahmen:** Eine echte Menge oder ein Atmo-Teppich darf leise darunter liegen. TUMULT liefert die Rufe auf den Punkt.
 
@@ -128,6 +127,7 @@ Die Versionsnummer steht in der Datei `VERSION`, im Plugin-Kopf und im Namen der
 
 - **1.0** – Erste Version: der Stimmvervielfacher mit vier Größen, den Reglern MENGE, SYNCHRON, VIELFALT, RAUM, EIGENE STIMME und OUTPUT, einer Anzeige der Menge, NEUE LEUTE, acht Presets, Hell/Dunkel, skalierbarer Oberfläche und Hilfe. [Release-Hinweise](docs/releases/1.0.md).
 - **1.1** – Der Regler SYNCHRON heißt jetzt CHAOS und ist umgekehrt (0 % im Gleichschritt, 100 % ungeordnet). Der Einsatz streut viel weiter (Vorlauf 500 ms statt 200 ms), jede Stimme hat ein eigenes Sprechtempo, VIELFALT reicht weiter. [Release-Hinweise](docs/releases/1.1.md).
+- **1.3** – Eigenständiger GEMURMEL-Schalter, reparierte Werteingaben und Mono-Begrenzung, gespeicherte Besetzung, stabile Personen, aktive Sprachvariation, Stereo-Eigenstimme und überblendende Räume. [Release-Hinweise](docs/releases/1.3.md).
 - **1.2** – Neu: das Gemurmel im Hintergrund mit den Reglern PEGEL und INTENSITÄT (fünf Stufen, stufenlos überblendet), die Presets stellen es mit ein. Die Oberfläche ist etwas breiter geworden. [Release-Hinweise](docs/releases/1.2.md).
 
 
@@ -137,23 +137,23 @@ Die Versionsnummer steht in der Datei `VERSION`, im Plugin-Kopf und im Namen der
 - `Assets/murmur/`: die eingebetteten Gemurmel-Aufnahmen (Ogg Vorbis, mono)
 - `Source/PluginProcessor.*`, `Source/PluginEditor.*`: JUCE-Plugin und Oberfläche
 - `tools/render_demo.cpp`: rendert Hörbeispiele aus der echten Engine, mit Testsignal oder mit einer eigenen WAV-Aufnahme
-- `.github/workflows/build.yml`: Windows-Bau mit Tests und Stabilitätstest (pluginval) bei jeder Änderung; Release nur von Hand mit Haken „publish“, siehe [docs/CI.md](docs/CI.md) und [docs/PUBLISHING.md](docs/PUBLISHING.md)
+- `.github/workflows/build.yml`: Windows-Bau mit Tests und Stabilitätstest (pluginval) bei jeder Änderung; Release nur mit ausdrücklichem publish-Auftrag (Workflow-Haken oder Release-Commit), siehe [docs/CI.md](docs/CI.md) und [docs/PUBLISHING.md](docs/PUBLISHING.md)
 
 ## Qualität und Prüfung
 
-Wenige Regler heißen nicht, dass hier etwas schnell zusammengeschustert wurde. Die Einfachheit liegt in der Bedienung, nicht in der Technik dahinter. Jede Version durchläuft Prüfungen, wie sie auch bei kommerziellen Plugins üblich sind, und alles ist im Quellcode nachvollziehbar:
+Die Engine ist getrennt von JUCE testbar. Der Windows-Workflow baut VST3 und führt DSP-/Prozessortests sowie **pluginval Strictness 8** aus. Linux prüft die DSP-Tests zusätzlich mit AddressSanitizer und UndefinedBehaviorSanitizer.
 
-- **pluginval, Stufe 8:** Vor jeder Veröffentlichung läuft das Prüfprogramm pluginval von Tracktion auf strenger Stufe. Es lädt das Plugin wieder und wieder, wechselt Abtastraten und Puffergrößen, speichert und lädt Einstellungen und fährt alle Regler mit Zufallswerten durch.
-- **Automatische Tests der Klangberechnung** laufen bei jeder Änderung. Sie prüfen unter anderem alle Abtastraten von 22,05 bis 192 kHz, alle vier Größen, ungültige Werte, die Streuung des Einsatzes, Stereo und Mono sowie den genauen Vorlauf. Außerdem laufen sie mit Speicher- und Fehlerprüfern (AddressSanitizer, UndefinedBehaviorSanitizer), die auch seltene Programmierfehler aufspüren.
-- **Echtzeitsicher:** Während der Wiedergabe wird kein Speicher angefordert und nirgends gewartet. Das verhindert Aussetzer und Knackser, auch bei kleinen Puffern und vielen Instanzen. Das Ergebnis ist unabhängig davon, wie der Host den Audiostrom in Blöcke teilt (bit-genau getestet).
-- **Mono-kompatibel:** Alle Stimmen sind zeitlich versetzt und im Stereobild verteilt. Die Mono-Summe löscht sich nicht aus und klingt nicht hohl.
-- **Saubere Übergänge:** Alle Regler gleiten, die Größe blendet weich über. Auch bei laufend automatisierten Reglern knackt nichts, getestet mit einem reinen Ton.
-- **Menge wird nur in Pausen neu gewürfelt:** Die Zusammensetzung ändert sich nie mitten im Ruf. Eine Instanz merkt sich ihre Menge im Projekt, dieselbe Aufnahme ergibt beim erneuten Abspielen dasselbe Ergebnis.
-- **Fester, gemeldeter Vorlauf:** 500 ms, exakt getestet, vom Host ausgeglichen.
-- **Die Rufe stammen ausschließlich aus deiner eigenen Aufnahme.** Eingebettet sind nur die Gemurmel-Aufnahmen für den Hintergrund (rund 2,5 MB). Sie werden beim ersten Laden einmal dekodiert und von allen Instanzen geteilt, im Audio-Thread wird nichts geladen oder angefordert.
-- **Gemurmel ohne hörbaren Loop:** Zufällige Reihenfolge, zufällige Stellen, weiche Überblendung von drei Sekunden, links und rechts unabhängig. Pegel, Helligkeit der Stufen, Blockunabhängigkeit und Knackfreiheit sind getestet.
-- **Pegel nach Messung abgestimmt:** MENGE 70 % entspricht bei allen Größen ungefähr der Lautheit der Eingangsstimme. Die Hörbeispiele werden aus derselben Engine gerendert.
-- **Rechenaufwand:** in meinen Messungen etwa 1 % eines Prozessorkerns für Klein und etwa 5 % für Stadion (48 kHz).
+- Fester, dem Host gemeldeter Vorlauf von 500 ms; Eigenstimmen-Latenz ist bei 44,1 und 48 kHz getestet.
+- Gleiche Eingabe, gleicher Startzustand und gleiche Parameter ergeben blockunabhängige Ergebnisse. Ein beliebiger Transportstart stellt keinen vollständigen DSP-Snapshot wieder her.
+- Verarbeitung mit vorreservierten Puffern; Regressionstests überwachen C++-Allokationen im Audio-Callback.
+- Mono wird vor der letzten Ausgangsbegrenzung summiert. Der Stereoanteil der Eigenstimme bleibt erhalten; die Crowd selbst verwendet die Mono-Summe des Eingangs.
+- Pegel und Mischwerte werden geglättet. Personenmerkmale bleiben pro Besetzung stabil; Beteiligung und Einsatz variieren in ausreichend langen Pausen. NEUE LEUTE wählt eine gespeicherte neue Besetzung für die nächste Pause.
+- Die Rufe stammen aus der Eingangsaufnahme. 14 eingebettete Mono-Gemurmeldateien von jeweils 30 Sekunden werden einmal dekodiert und geteilt. Zufällige Ausschnitte und weiche Wechsel reduzieren feste Loops; markante Ereignisse können wiedererkennbar bleiben.
+- Eine leistungsbezogene Überblendung verbindet die fünf Gemurmelstufen. INTENSITÄT erhöht den Zielpegel zusätzlich um bis zu 3 dB.
+- MENGE 70 % wurde anhand synthetischer Sprachsignale abgestimmt. Reale Lautheit und Sprachverständlichkeit hängen vom Eingang und von der Mischung ab.
+- Die Ausgangsstufe sättigt oberhalb 0,8 (etwa −1,94 dBFS) weich. Sie ist kein True-Peak-Limiter.
+
+Details, geprüfte Fehlerfälle und Grenzen: [Validierung 1.3](docs/VALIDATION-1.3.md).
 
 Ob es echt klingt, entscheidet am Ende das Ohr. Rückmeldungen zum Klang sind deshalb besonders willkommen.
 

@@ -56,33 +56,33 @@ static juce::AttributedString buildHelp (juce::Colour text, juce::Colour accent,
     body ("Die Menge von oben: unten stehst du als H\xc3\xb6rer, links und rechts ist das Stereobild, nach hinten wird es dumpfer und leiser. Jeder Punkt ist eine Stimme und leuchtet, wenn sie gerade ruft. Vorne stehen wenige deutliche Stimmen, dahinter die Masse.");
 
     head ("NEUE LEUTE");
-    body ("W\xc3\xbcrfelt die Menge neu: Wer steht wo, wer ruft fr\xc3\xbcher oder sp\xc3\xa4ter, wer hat welche Stimmlage. Das geschieht in der n\xc3\xa4" "chsten Sprechpause, nie mitten in einem Ruf, damit nichts knackt. Von allein w\xc3\xbcrfelt TUMULT nach jeder l\xc3\xa4ngeren Pause neu (je nach CHAOS und Gr\xc3\xb6\xc3\x9f" "e rund eine halbe bis eine Sekunde Stille), darum klingt jede Wiederholung eines Rufs ein wenig anders.");
+    body ("W\xc3\xbcrfelt die Besetzung neu: Wer steht wo und hat welche Stimmlage. Das geschieht in der n\xc3\xa4" "chsten Sprechpause. Die gew\xc3\xa4hlte Besetzung wird im Projekt gespeichert. Von allein w\xc3\xbcrfelt TUMULT nach jeder l\xc3\xa4ngeren Pause neu (je nach CHAOS und Gr\xc3\xb6\xc3\x9f" "e rund eine halbe bis eine Sekunde Stille). Dabei variieren Einsatz, Beteiligung und Ausdruck; Personen und Positionen bleiben erhalten.");
 
     head ("CHAOS");
     body ("Wie gleichm\xc3\xa4\xc3\x9fig die Menge ruft. Ganz links rufen die Leute fast im Gleichschritt, wie ein einge\xc3\xbc" "bter Sprechchor. Je weiter du aufdrehst, desto mehr streut der Einsatz: Manche rufen deutlich vor dir, andere erst eine Weile danach, und jeder hat sein eigenes Sprechtempo, einer etwas schneller, ein anderer etwas langsamer. Wie weit es streut, h\xc3\xa4ngt zus\xc3\xa4tzlich von der Gr\xc3\xb6\xc3\x9f" "e ab: in einem Stadion kommt der Ruf von weiter weg und ist weiter verschmiert.");
 
     head ("VIELFALT");
-    body ("Wie unterschiedlich die Leute klingen. Ganz links klingen alle \xc3\xa4hnlich wie eine Gruppe. Weiter rechts mischen sich tiefere und h\xc3\xb6here Lagen (M\xc3\xa4nner, Frauen, Jugendliche, bis etwa f\xc3\xbcnf Halbt\xc3\xb6ne), dazu kommen eigene Klangf\xc3\xa4rbungen.");
+    body ("Wie unterschiedlich die Leute klingen. Ganz links klingen alle \xc3\xa4hnlich wie eine Gruppe. Weiter rechts mischen sich tiefere und h\xc3\xb6here Tonlagen (bis etwa sechs Halbt\xc3\xb6ne), dazu kommen eigene Klangf\xc3\xa4rbungen.");
 
     head ("GEMURMEL");
-    body ("Ein Dauerbett aus Gemurmel im Hintergrund, das unter den Rufen eine aufgeregte Menge h\xc3\xb6rbar macht. PEGEL regelt die Lautst\xc3\xa4rke, ganz links ist es aus. INTENSIT\xc3\x84T blendet stufenlos von leisem Raunen \xc3\xbc" "ber Gemurmel und angespannte Stimmung bis zur aufgebrachten Menge. Das Gemurmel wiederholt sich nicht h\xc3\xb6rbar, l\xc3\xa4uft auch ohne Eingang und geht durch denselben Raum wie die Menge. Willst du nur das Gemurmel, stellst du MENGE auf null und schaltest EIGENE STIMME aus.");
+    body ("Ein Dauerbett aus Gemurmel im Hintergrund, das unter den Rufen eine aufgeregte Menge h\xc3\xb6rbar macht. AN / AUS schaltet das Bett unabh\xc3\xa4ngig vom Eingang ein. PEGEL regelt die Lautst\xc3\xa4rke und bleibt beim Ausschalten erhalten. Auch auf einer leeren Spur ist kein Eingangssignal erforderlich. INTENSIT\xc3\x84T blendet stufenlos von leisem Raunen \xc3\xbc" "ber Gemurmel und angespannte Stimmung bis zur aufgebrachten Menge. Zuf\xc3\xa4llige Ausschnitte und weiche Wechsel reduzieren feste Wiederholungen; es l\xc3\xa4uft auch ohne Eingang und geht durch denselben Raum wie die Menge. Willst du nur das Gemurmel, stellst du MENGE auf null und schaltest EIGENE STIMME aus.");
 
     head ("RAUM");
     body ("Wieviel Raum die Menge bekommt. Der Raum folgt der GR\xc3\x96SSE: in der Kneipe kurz und nah, im Stadion mit langem Nachhall und einzelnen Echos von den R\xc3\xa4ngen. Er liegt auch auf deiner eigenen Stimme, damit sie in der Menge steht und nicht davor.");
 
     head ("EIGENE STIMME");
-    body ("Dein eingesprochenes Original, mit dem festen Vorlauf. Ganz links ist es aus, dann ruft nur die Menge. Bei den Presets steht sie meist leise unter der Menge, damit man einen Ruf heraush\xc3\xb6rt, ohne dass er nach Einzelperson klingt.");
+    body ("Dein eingesprochenes Original, in Stereo erhalten und mit dem festen Vorlauf. Ganz links ist es aus, dann ruft nur die Menge. Bei den Presets steht sie meist leise unter der Menge, damit man einen Ruf heraush\xc3\xb6rt, ohne dass er nach Einzelperson klingt.");
 
     head ("OUTPUT");
-    body ("Gesamtpegel am Ausgang.");
+    body ("Gesamtpegel vor der Schutzs\xc3\xa4ttigung am Ausgang. Hohe Pegel k\xc3\xb6nnen den Klang verdichten.");
 
     head ("Presets");
-    body ("Kneipe, Kleine Demo, Protestzug, Marktplatz, Gro\xc3\x9f" "demo auf dem Platz, Sporthalle, Stadion-Chor und Stadion-Jubel. Sie stellen nur die Regler ein und erscheinen in der Preset-Liste deines Hosts.");
+    body ("Kneipe, Kleine Demo, Protestzug, Marktplatz, Gro\xc3\x9f" "demo auf dem Platz, Sporthalle, Stadion-Chor, Stadion-Jubel und Ausgangslage. Sie stellen nur die Regler ein und erscheinen in der Preset-Liste deines Hosts.");
 
     head ("Allgemein");
     body ("Doppelklick auf einen Drehregler oder Strg-Klick setzt ihn auf den Standardwert zur\xc3\xbck.");
     body ("Look: Dunkel / Hell umschalten, die Wahl wird mit dem Projekt gespeichert. Das Fenster ist am rechten unteren Rand skalierbar (50\xe2\x80\x93" "300 %).");
-    note ("Alle Regler sind automatisierbar. Die Menge ist Teil des Projekts: Beim Speichern merkt sich TUMULT, aus welchen Leuten sie besteht. Die Berechnung ist unabh\xc3\xa4ngig von der Puffergr\xc3\xb6\xc3\x9f" "e des Hosts. Die Menge ist mono-kompatibel: Alle Stimmen sind zeitlich versetzt und verteilt, die Mono-Summe l\xc3\xb6scht sich nicht aus.");
+    note ("Alle Regler sind automatisierbar. Die Menge ist Teil des Projekts: Beim Speichern merkt sich TUMULT, aus welchen Leuten sie besteht. Bei gleichen Reglerwerten ist die Berechnung unabh\xc3\xa4ngig von der Puffergr\xc3\xb6\xc3\x9f" "e des Hosts. Die Menge ist mono-kompatibel: Alle Stimmen sind zeitlich versetzt und verteilt, die Mono-Summe l\xc3\xb6scht sich nicht aus.");
 
     head ("Idee und Konzept");
     body ("Lars Eickst\xc3\xa4" "dt, Stromschlag Audio");
@@ -111,6 +111,16 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
     setupKnob (room, "room", "RAUM");
     setupKnob (own, "own", "EIGENE STIMME");
     setupKnob (output, "output", "OUTPUT");
+
+    wallaStage.setJustificationType (juce::Justification::centred);
+    wallaStage.setFont (juce::FontOptions (11.0f));
+    content.addAndMakeVisible (wallaStage);
+    wallaButton.setButtonText ("AUS");
+    wallaButton.onStateChange = [this] { wallaButton.setButtonText (wallaButton.getToggleState() ? "AN" : "AUS"); };
+    wallaButton.setClickingTogglesState (true);
+    wallaButton.setTooltip (u8 ("Gemurmel einschalten: funktioniert auch ohne Aufnahme auf einer leeren Spur. PEGEL bleibt beim Ausschalten erhalten. Automatisierbar."));
+    content.addAndMakeVisible (wallaButton);
+    wallaAttachment = std::make_unique<APVTS::ButtonAttachment> (processor.apvts, "wallaEnabled", wallaButton);
 
     // GROESSE: 4-Wege-Wahlschalter
     sizeLabel.setText (u8 ("GR\xc3\x96SSE"), juce::dontSendNotification);
@@ -159,18 +169,19 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
     // Tooltips
     amount.slider.setTooltip (u8 ("Lautst\xc3\xa4rke der Menge. Bei etwa 70 % ist sie ungef\xc3\xa4hr so laut wie deine eingesprochene Stimme."));
     chaos.slider.setTooltip (u8 ("Wie ungeordnet die Menge ruft: links im Gleichschritt wie ein Sprechchor, rechts mit weit gestreutem Einsatz und unterschiedlichem Sprechtempo."));
-    variety.slider.setTooltip (u8 ("Wie unterschiedlich die Leute klingen: links eine \xc3\xa4hnliche Gruppe, rechts M\xc3\xa4nner, Frauen und Jugendliche gemischt."));
-    walla.slider.setTooltip (u8 ("Lautst\xc3\xa4rke des Gemurmels im Hintergrund. Ganz links aus. Das Gemurmel l\xc3\xa4uft dauernd unter den Rufen und geht durch denselben Raum. Es geht auch allein: MENGE auf null und EIGENE STIMME aus."));
+    variety.slider.setTooltip (u8 ("Wie unterschiedlich die Leute klingen: links eine \xc3\xa4hnliche Gruppe, rechts unterschiedlichere Tonlagen und Klangfarben."));
+    walla.slider.setTooltip (u8 ("Lautst\xc3\xa4rke des Gemurmels. Mit AN / AUS aktivieren, auch ohne Aufnahme. Das Gemurmel l\xc3\xa4uft dauernd unter den Rufen und geht durch denselben Raum. Es geht auch allein: MENGE auf null und EIGENE STIMME aus."));
     wallaInt.slider.setTooltip (u8 ("Wie aufgeregt das Gemurmel ist: links leises Raunen, in der Mitte angespannt, rechts eine aufgebrachte Menge. Die Stufen blenden stufenlos ineinander."));
     room.slider.setTooltip (u8 ("Wieviel Raum die Menge bekommt. Der Raum folgt der GR\xc3\x96SSE (Kneipe bis Stadion mit Echo von den R\xc3\xa4ngen)."));
     own.slider.setTooltip (u8 ("Dein eingesprochenes Original (mit 500 ms Vorlauf). Ganz links aus: dann ruft nur die Menge."));
-    output.slider.setTooltip (u8 ("Gesamtpegel am Ausgang."));
+    output.slider.setTooltip (u8 ("Gesamtpegel vor der Schutzs\xc3\xa4ttigung am Ausgang. Hohe Pegel k\xc3\xb6nnen den Klang verdichten."));
     rerollButton.setTooltip (u8 ("W\xc3\xbcrfelt die Menge in der n\xc3\xa4" "chsten Sprechpause neu: wer wo steht, wer fr\xc3\xbc" "her oder sp\xc3\xa4ter ruft, welche Stimmlage."));
     display.setTooltip (u8 ("Die Menge von oben. Unten bist du, links und rechts ist das Stereobild, hinten ist es dumpfer und leiser. Jeder Punkt ist eine Stimme."));
     for (int i = 0; i < tumult::kNumSizes; ++i)
         sizeButtons[i].setTooltip (u8 (kSizeNote[i]));
 
     applyTheme();
+    updateMurmurStage();
     // zuletzt gespeicherte Fenstergroesse wiederherstellen (sonst 100 %)
     const int savedW = processor.uiWidth.load();
     const int restoredW = juce::jlimit (kBaseW / 2, kBaseW * 3, savedW);
@@ -189,12 +200,20 @@ void TumultEditor::updateSizeButtons (int index)
     sizeNote.setText (u8 (kSizeNote[index]), juce::dontSendNotification);
 }
 
+void TumultEditor::updateMurmurStage()
+{
+    const char* stages[] = { "Raunen", "Gemurmel", "angespannt", "aufgebracht", "Tumult" };
+    const int stage = juce::jlimit (0, 4, juce::roundToInt (processor.apvts.getRawParameterValue ("wallaInt")->load() * 4));
+    wallaStage.setText (stages[stage], juce::dontSendNotification);
+}
+
 void TumultEditor::timerCallback()
 {
     const bool wantsDark = processor.uiTheme.load() != 1;
     if (theme.dark != wantsDark) { theme = wantsDark ? darkTheme() : lightTheme(); applyTheme(); }
     const int width = processor.uiWidth.load();
     if (getWidth() != width) setSize (width, juce::roundToInt ((float) width * kBaseH / kBaseW));
+    updateMurmurStage();
     display.repaint();
 }
 
@@ -221,6 +240,7 @@ void TumultEditor::applyTheme()
     look.setColour (juce::TextButton::textColourOffId, theme.text);
     look.setColour (juce::TextButton::textColourOnId, juce::Colours::black);
 
+    wallaStage.setColour (juce::Label::textColourId, theme.dim);
     sizeLabel.setColour (juce::Label::textColourId, theme.dim);
     crowdLabel.setColour (juce::Label::textColourId, theme.dim);
     sizeNote.setColour (juce::Label::textColourId, theme.dim);
@@ -309,7 +329,7 @@ void TumultEditor::paint (juce::Graphics& g)
     // Untere Kaesten: CHOR | GEMURMEL | RAUM | MIX
     struct Box { float x, w; const char* title; const char* note; };
     const Box boxes[] = { { 12.0f, 220.0f, "CHOR", "wie die Menge ruft" },
-                          { 240.0f, 220.0f, "GEMURMEL", "Hintergrund" },
+                          { 240.0f, 220.0f, "GEMURMEL", "" },
                           { 468.0f, 124.0f, "RAUM", "" },
                           { 600.0f, (float) W - 612.0f, "MIX", "" } };
     for (const auto& b : boxes)
@@ -367,9 +387,12 @@ void TumultEditor::resized()
     // CHOR: CHAOS, VIELFALT
     placeKnob (chaos, 14, 264, 108);
     placeKnob (variety, 122, 264, 108);
+    wallaButton.setBounds (354, 240, 96, 21);
     // GEMURMEL: PEGEL, INTENSITAET
     placeKnob (walla, 242, 264, 108);
     placeKnob (wallaInt, 350, 264, 108);
+    wallaInt.slider.setBounds (360, 284, 88, 100);
+    wallaStage.setBounds (350, 386, 108, 16);
     // RAUM
     placeKnob (room, 476, 264, 108);
     // MIX: EIGENE STIMME, OUTPUT

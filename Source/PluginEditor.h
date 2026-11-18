@@ -106,11 +106,12 @@ private:
     void setupKnob (Knob&, const juce::String& paramId, const juce::String& text);
     void applyTheme();
     void updateSizeButtons (int index);
+    void updateMurmurStage();
     void timerCallback() override;
     static Theme darkTheme();
     static Theme lightTheme();
 
-    static constexpr int kBaseW = 820, kBaseH = 420;
+    static constexpr int kBaseW = TumultProcessor::kUiWidth, kBaseH = TumultProcessor::kUiHeight;
 
     TumultProcessor& processor;
     juce::LookAndFeel_V4 look;
@@ -126,6 +127,9 @@ private:
     std::unique_ptr<juce::ParameterAttachment> sizeAttachment;
     CrowdDisplay display;
     juce::TextButton rerollButton;
+    juce::Label wallaStage;
+    juce::TextButton wallaButton;
+    std::unique_ptr<APVTS::ButtonAttachment> wallaAttachment;
     juce::TextButton themeButton;
     juce::TextButton helpButton;
     HelpPanel helpScroll;

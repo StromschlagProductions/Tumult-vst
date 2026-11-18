@@ -15,7 +15,7 @@ Alle Plugin-Repos sind öffentlich, die Actions-Minuten spielen keine Rolle. Des
 3. Bei geänderter Oberfläche oder neuer Version: **Screenshots erzeugen** starten. Die Bilder werden mit der einkompilierten Versionsnummer neu aufgenommen und eingecheckt.
 4. Zur Veröffentlichung: GitHub > Actions > „Windows-VST3 bauen“ > „Run workflow“ (Branch `main`) mit Haken **publish**. Das erstellt das Release `v<VERSION>` mit `Tumult-v<VERSION>-Windows-VST3.zip` und setzt den Download-Link der README („latest“) auf die neue Version. Dafür muss `docs/releases/<VERSION>.md` (Release-Hinweise) vorhanden sein; fehlt sie, bricht der Lauf nach Sekunden ab.
 
-Es wird nie automatisch ein Release erstellt.
+Ohne manuellen publish-Haken oder ausdrücklich gekennzeichneten Release-Commit wird kein Release erstellt.
 
 ## Lokal bauen und prüfen
 
@@ -31,3 +31,7 @@ cmake -S . -B build && cmake --build build --config Release && ctest --test-dir 
 ```
 
 Verbindliches öffentliches Versionsschema: `docs/VERSIONING.md` (ohne Build-Suffix).
+
+## Expliziter Release-Auftrag per Commit
+
+Neben dem manuellen Workflow kann ein ausdrücklich freigegebener Push auf `main` mit der ersten Commitzeile `release: Tumult <VERSION> <Beschreibung>` die Veröffentlichung beauftragen. Die Nummer muss exakt zur Datei `VERSION` passen. Normale Pushes veröffentlichen weiterhin nichts. Der Release-Auftrag durchläuft dieselben Versions-, Screenshot-, Build-, Regressionstest- und pluginval-Prüfungen wie der manuelle publish-Lauf. Diese Alternative ermöglicht eine vom Auftraggeber autorisierte Veröffentlichung über den GitHub-Connector ohne zusätzliche Browseranmeldung.

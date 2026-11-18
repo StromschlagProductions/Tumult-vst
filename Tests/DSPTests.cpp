@@ -6,6 +6,18 @@
 #include <vector>
 
 using tumult::Params;
+namespace tumult
+{
+struct EngineTestAccess
+{
+    static float largestTempoOffset (const Engine& e)
+    {
+        float result = 0;
+        for (const auto& voice : e.v) result = std::max (result, std::abs (voice.acc) / e.fs);
+        return result;
+    }
+};
+}
 
 static double rms (const std::vector<float>& x, size_t a, size_t b)
 {
@@ -404,6 +416,83 @@ int main()
             e.process (a.data(), b.data(), 4800, p);
             for (float x : a) CHECK (x == 0.0f);
         }
+    }
+
+    // 13) Personen und Positionen bleiben ueber automatische Phrasenwechsel erhalten.
+    {
+        tumult::Engine e; e.prepare (48000, 7);
+        Params p; p.size = 3;
+        std::vector<float> a (48000 * 4), b;
+        for (int i = 0; i < 48000; ++i) a[(size_t) i] = 0.2f * std::sin (0.03f * (float) i);
+        b = a; e.process (a.data(), b.data(), 16, p);
+        std::array<float, 64> pan, depth;
+        for (int i = 0; i < 64; ++i) { pan[i] = e.voicePan (i); depth[i] = e.voiceDepth (i); }
+        { NoAllocations guard; e.process (a.data() + 16, b.data() + 16, (int) a.size() - 16, p); }
+        CHECK (e.rerollCount() >= 2);
+        for (int i = 0; i < 64; ++i) { CHECK (pan[i] == e.voicePan (i)); CHECK (depth[i] == e.voiceDepth (i)); }
+        e.requestSeed (123);
+        std::fill (a.begin(), a.end(), 0); b = a;
+        { NoAllocations guard; e.process (a.data(), b.data(), (int) a.size(), p); }
+        int changed = 0; for (int i = 0; i < 64; ++i) changed += pan[i] != e.voicePan (i);
+        CHECK (changed > 50);
+    }
+
+    // 14) Eigenstimme erhaelt Stereo, Mono wird vor der letzten Begrenzung summiert.
+    for (double fs : { 44100.0, 48000.0 })
+    {
+        const int n = (int) fs, latency = (int) std::lround (fs * 0.5);
+        tumult::Engine e; e.prepare (fs, 7);
+        Params p; p.amount = 0; p.room = 0; p.ownDb = 0;
+        std::vector<float> a ((size_t) n), b ((size_t) n);
+        a[100] = 0.5f; b[100] = -0.25f;
+        e.process (a.data(), b.data(), n, p);
+        CHECK (a[(size_t) (100 + latency)] == 0.5f);
+        CHECK (b[(size_t) (100 + latency)] == -0.25f);
+        e.reset(); p.ownDb = 6; p.outDb = 12;
+        std::fill (a.begin(), a.end(), 1); b = a;
+        { NoAllocations guard; e.process (a.data(), b.data(), n, p, true); }
+        for (int i = 0; i < n; ++i) { CHECK (std::abs (a[(size_t) i]) <= 1); CHECK (a[(size_t) i] == b[(size_t) i]); }
+    }
+
+    // 15) Gemurmel-Schalter ueberblendet weich und veraendert den Pegelparameter nicht.
+    {
+        tumult::Engine e; e.prepare (48000, 7); e.setMurmurBank (testBank());
+        Params p; p.amount = 0; p.ownDb = -80; p.room = 0; p.walla = 0.7f; p.wallaEnabled = false;
+        std::vector<float> a (48000), b = a;
+        e.process (a.data(), b.data(), (int) a.size(), p);
+        CHECK (rms (a, 0, a.size()) < 1e-12);
+        p.wallaEnabled = true;
+        e.process (a.data(), b.data(), (int) a.size(), p);
+        CHECK (a[0] == 0.0f); CHECK (rms (a, 24000, a.size()) > 0.001);
+        p.wallaEnabled = false;
+        std::fill (a.begin(), a.end(), 0); b = a;
+        { NoAllocations guard; e.process (a.data(), b.data(), (int) a.size(), p); }
+        CHECK (rms (a, 40000, a.size()) < 1e-6);
+    }
+
+    // 16) Lange Stille verbraucht kein Tempo-Budget; gelesene Sprache entwickelt einen Versatz.
+    for (double fs : { 44100.0, 48000.0 })
+    {
+        tumult::Engine e; e.prepare (fs, 7);
+        Params p; p.size = 3; p.chaos = 1;
+        std::vector<float> a ((size_t) (10 * fs)), b = a;
+        { NoAllocations guard; e.process (a.data(), b.data(), (int) a.size(), p); }
+        CHECK (tumult::EngineTestAccess::largestTempoOffset (e) == 0.0f);
+        for (int i = 0; i < (int) fs; ++i) a[(size_t) i] = b[(size_t) i] = 0.3f * std::sin (0.03f * (float) i);
+        e.process (a.data(), b.data(), (int) fs, p);
+        CHECK (tumult::EngineTestAccess::largestTempoOffset (e) > 0.01f);
+        CHECK (tumult::EngineTestAccess::largestTempoOffset (e) <= tumult::kAccMaxSec + 1e-6f);
+    }
+
+    // 17) Bypass ist ebenfalls verzoegert, auch bei sonst abgeschalteter Eigenstimme.
+    {
+        tumult::Engine e; e.prepare (48000, 7);
+        Params p; p.amount = 0; p.room = 0; p.ownDb = -80;
+        std::vector<float> a (48000), b = a; a[100] = 0.5f; b[100] = -0.25f;
+        { NoAllocations guard; e.process (a.data(), b.data(), 48000, p, false, true); }
+        CHECK (std::abs (a[24100] - 0.5f) < 1e-6f);
+        CHECK (std::abs (b[24100] + 0.25f) < 1e-6f);
+        for (int i = 0; i < 24100; ++i) CHECK (a[(size_t) i] == 0);
     }
 
     return 0;

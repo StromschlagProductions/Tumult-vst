@@ -10,7 +10,11 @@ dieselbe Datei für Tag, Titel und ZIP-Namen, prüft das Nummernschema und vergl
 gebauten VST3-/Windows-Binärmetadaten mit dieser Version. JUCE-interne Nullen wie
 `1.6.0`/`1.6.0.0` bezeichnen dieselbe öffentliche Version `1.6`.
 
-Releases erfordern den manuell freigegebenen `build.yml`-Lauf auf `main` mit
-`publish=true`. Er baut Windows-x64-VST3, führt Regressionstests und pluginval Stufe 8
+Releases erfordern einen ausdrücklich freigegebenen `build.yml`-Lauf auf `main`: manuell mit
+`publish=true` oder über den unten beschriebenen Release-Commit. Er baut Windows-x64-VST3, führt Regressionstests und pluginval Stufe 8
 aus und veröffentlicht erst danach die ZIP als neuestes stabiles Release. Die passenden
 Hinweise stehen in `docs/releases/<VERSION>.md`. Alte Releases werden nicht entfernt.
+
+## Expliziter Release-Auftrag per Commit
+
+Neben dem manuellen Workflow kann ein ausdrücklich freigegebener Push auf `main` mit der ersten Commitzeile `release: Tumult <VERSION> <Beschreibung>` die Veröffentlichung beauftragen. Die Nummer muss exakt zur Datei `VERSION` passen. Normale Pushes veröffentlichen weiterhin nichts. Der Release-Auftrag durchläuft dieselben Versions-, Screenshot-, Build-, Regressionstest- und pluginval-Prüfungen wie der manuelle publish-Lauf. Diese Alternative ermöglicht eine vom Auftraggeber autorisierte Veröffentlichung über den GitHub-Connector ohne zusätzliche Browseranmeldung.

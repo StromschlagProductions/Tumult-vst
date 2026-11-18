@@ -7,6 +7,9 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#if defined (__SSE__) || defined (_M_X64) || defined (_M_IX86_FP)
+ #include <xmmintrin.h>
+#endif
 
 namespace
 {
@@ -101,6 +104,10 @@ double rmsOf (const std::vector<float>& x) { double s = 0; for (float v : x) s +
 
 int main (int argc, char** argv)
 {
+    // Wie der Plugin-Callback: sehr kleine Hallreste duerfen Offline-Renderings nicht ausbremsen.
+   #if defined (__SSE__) || defined (_M_X64) || defined (_M_IX86_FP)
+    _mm_setcsr (_mm_getcsr() | 0x8040u);
+   #endif
     if (argc < 2) { std::fprintf (stderr, "Usage: render_demo <Zielordner> [eingang.wav]\n"); return 1; }
     const std::string dir = argv[1];
     int fs = 48000;
