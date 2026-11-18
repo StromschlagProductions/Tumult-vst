@@ -13,6 +13,7 @@ public:
     void releaseResources() override {}
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    void processBlockBypassed (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
     void reset() override;
 
     juce::AudioProcessorEditor* createEditor() override;
@@ -44,6 +45,7 @@ public:
     std::atomic<int> uiTheme { 0 }, uiWidth { 820 }, uiHeight { 420 };
 
 private:
+    void processAudio (juce::AudioBuffer<float>&, bool bypassed);
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
 
     tumult::Engine engine;

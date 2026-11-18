@@ -8,7 +8,7 @@ Verbesserungen aus dem unabhängigen technischen Audit von 1.2. Alle Tests verwe
 
 - Prozenttexte, Dezimalkomma, „aus“ und Intensitätsnamen.
 - Mono-Begrenzung bei maximalen gültigen Eigenstimmen-/Outputwerten, 44,1 und 48 kHz.
-- Stereo-Eigenstimme und exakte gemeldete Verzögerung.
+- Stereo-Eigenstimme und exakte gemeldete Verzögerung, auch im Host-Bypass.
 - Generator auf einem deaktivierten Eingang, AN/AUS, gespeicherter Pegel und Tail-Meldung.
 - Recall vor und nach Vorbereitung; gespeicherte manuelle Besetzung; Migration alter Zustände.
 - Stabile Positionen über automatische Phrasenwechsel.

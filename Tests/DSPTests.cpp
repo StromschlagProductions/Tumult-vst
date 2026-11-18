@@ -484,5 +484,16 @@ int main()
         CHECK (tumult::EngineTestAccess::largestTempoOffset (e) <= tumult::kAccMaxSec + 1e-6f);
     }
 
+    // 17) Bypass ist ebenfalls verzoegert, auch bei sonst abgeschalteter Eigenstimme.
+    {
+        tumult::Engine e; e.prepare (48000, 7);
+        Params p; p.amount = 0; p.room = 0; p.ownDb = -80;
+        std::vector<float> a (48000), b = a; a[100] = 0.5f; b[100] = -0.25f;
+        { NoAllocations guard; e.process (a.data(), b.data(), 48000, p, false, true); }
+        CHECK (std::abs (a[24100] - 0.5f) < 1e-6f);
+        CHECK (std::abs (b[24100] + 0.25f) < 1e-6f);
+        for (int i = 0; i < 24100; ++i) CHECK (a[(size_t) i] == 0);
+    }
+
     return 0;
 }

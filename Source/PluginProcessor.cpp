@@ -187,7 +187,10 @@ bool TumultProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
     return in == juce::AudioChannelSet::mono() && out == juce::AudioChannelSet::stereo();   // Mono rein, Stereo raus
 }
 
-void TumultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+void TumultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) { processAudio (buffer, false); }
+void TumultProcessor::processBlockBypassed (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) { processAudio (buffer, true); }
+
+void TumultProcessor::processAudio (juce::AudioBuffer<float>& buffer, bool bypassed)
 {
     juce::ScopedNoDenormals noDenormals;
     const int numSamples = buffer.getNumSamples();
@@ -216,7 +219,7 @@ void TumultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         // Mono rein, Stereo raus: die Stimme kommt auf beide Seiten, die Menge ersetzt den Eingang
         if (getTotalNumInputChannels() == 1)
             buffer.copyFrom (1, 0, buffer, 0, 0, numSamples);
-        engine.process (left, buffer.getWritePointer (1), numSamples, p);
+        engine.process (left, buffer.getWritePointer (1), numSamples, p, false, bypassed);
         for (int ch = 2; ch < numCh; ++ch)
             buffer.clear (ch, 0, numSamples);
     }
@@ -229,7 +232,7 @@ void TumultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
             const int count = std::min ((int) scratchL.size(), numSamples - offset);
             std::copy_n (left + offset, count, scratchL.data());
             std::copy_n (left + offset, count, scratchR.data());
-            engine.process (scratchL.data(), scratchR.data(), count, p, true);
+            engine.process (scratchL.data(), scratchR.data(), count, p, true, bypassed);
             for (int i = 0; i < count; ++i)
                 left[offset + i] = scratchL[(size_t) i];
             offset += count;

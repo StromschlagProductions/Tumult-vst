@@ -371,7 +371,7 @@ public:
         std::fill (std::begin (stageL), std::end (stageL), 0.0f);
         std::fill (std::begin (stageR), std::end (stageR), 0.0f);
         env = 0.0f; silentRun = 1 << 29; rerollDone = false; snap = true; norm = 0.0f; visRef = 0.0f;
-        ownCur = outCur = wetCur = 0.0f; ownInit = false;
+        ownCur = outCur = wetCur = bypassCur = 0.0f; ownInit = false;
         rerolls = 0; visCounter = 0;
         initMurmur();
         for (int i = 0; i < kMaxVoices; ++i) { visLevel[i].store (0.0f); visOn[i].store (0.0f); }
@@ -390,7 +390,7 @@ public:
     float voiceLevel (int i) const { return visLevel[i].load (std::memory_order_relaxed); }
 
     // Eingang (links/rechts, bei Mono-Spuren beide gleich) wird durch den Ausgang ersetzt
-    void process (float* l, float* r, int n, const Params& pIn, bool monoOutput = false)
+    void process (float* l, float* r, int n, const Params& pIn, bool monoOutput = false, bool bypassed = false)
     {
         const Params p = sanitize (pIn);
         const float ownTarget = dbToLin (p.ownDb), outTarget = dbToLin (p.outDb);
@@ -427,9 +427,16 @@ public:
             rev.process (0.5f * (sl + sr), wl, wr);
             const float ol = (sl + wetCur * wl) * outCur;
             const float oright = (sr + wetCur * wr) * outCur;
+            const float bypassTarget = bypassed ? 1.0f : 0.0f;
+            bypassCur += aSmooth * (bypassTarget - bypassCur);
+            if (std::fabs (bypassCur - bypassTarget) < 1e-4f) bypassCur = bypassTarget;
             if (monoOutput)
-                l[i] = r[i] = softClip (0.5f * ol + 0.5f * oright);
-            else { l[i] = softClip (ol); r[i] = softClip (oright); }
+                l[i] = r[i] = lerp (softClip (0.5f * ol + 0.5f * oright), dry, bypassCur);
+            else
+            {
+                l[i] = lerp (softClip (ol), dry + side, bypassCur);
+                r[i] = lerp (softClip (oright), dry - side, bypassCur);
+            }
             if (++chunkPos == kChunk) chunkPos = 0;
         }
     }
@@ -804,6 +811,7 @@ private:
     int silentRun = 0, rerolls = 0, visCounter = 0;
     bool rerollDone = false, snap = true, ownInit = false;
     std::atomic<bool> manualReroll { false };
+    float bypassCur = 0.0f;
     float norm = 0.0f, ownCur = 0.0f, outCur = 0.0f, wetCur = 0.0f, visRef = 0.0f;
     float driftDecay = 0.0003f, driftNoise = 0.0127f, filterStep = 0.001f;
     float aGain = 0.01f, aDelay = 0.001f, aRatio = 0.003f;

@@ -273,6 +273,22 @@ int main()
         CHECK (q->apvts.getRawParameterValue ("wallaEnabled")->load() == 1.0f);
     }
 
+    // Host-Bypass behaelt die gemeldeten 500 ms bei und erhaelt Stereo.
+    for (double fs : { 44100.0, 48000.0 })
+    {
+        p->setCurrentProgram (8);
+        layout.inputBuses.set (0, juce::AudioChannelSet::stereo());
+        layout.outputBuses.set (0, juce::AudioChannelSet::stereo()); CHECK (p->setBusesLayout (layout));
+        p->prepareToPlay (fs, (int) fs);
+        juce::AudioBuffer<float> b (2, (int) fs); b.clear();
+        b.setSample (0, 100, 0.5f); b.setSample (1, 100, -0.25f);
+        { NoAllocations guard; p->processBlockBypassed (b, midi); }
+        const int at = 100 + (int) std::lround (fs * 0.5);
+        CHECK (std::abs (b.getSample (0, at) - 0.5f) < 1e-6f);
+        CHECK (std::abs (b.getSample (1, at) + 0.25f) < 1e-6f);
+        for (int i = 0; i < at; ++i) CHECK (std::abs (b.getSample (0, i)) < 1e-12f);
+    }
+
     // Die Oberflaeche laesst sich anlegen und wieder abbauen (alle Looks)
     {
         for (int theme = 0; theme < 2; ++theme)
