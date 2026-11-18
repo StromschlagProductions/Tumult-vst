@@ -65,7 +65,7 @@ static juce::AttributedString buildHelp (juce::Colour text, juce::Colour accent,
     body ("Wie unterschiedlich die Leute klingen. Ganz links klingen alle \xc3\xa4hnlich wie eine Gruppe. Weiter rechts mischen sich tiefere und h\xc3\xb6here Lagen (M\xc3\xa4nner, Frauen, Jugendliche, bis etwa f\xc3\xbcnf Halbt\xc3\xb6ne), dazu kommen eigene Klangf\xc3\xa4rbungen.");
 
     head ("GEMURMEL");
-    body ("Ein Dauerbett aus Gemurmel im Hintergrund, das unter den Rufen eine aufgeregte Menge h\xc3\xb6rbar macht. PEGEL regelt die Lautst\xc3\xa4rke, ganz links ist es aus. INTENSIT\xc3\x84T blendet stufenlos von leisem Raunen \xc3\xbcber Gemurmel und angespannte Stimmung bis zur aufgebrachten Menge. Das Gemurmel wiederholt sich nicht h\xc3\xb6rbar, l\xc3\xa4uft auch ohne Eingang und geht durch denselben Raum wie die Menge. Willst du nur das Gemurmel, stellst du MENGE auf null und schaltest EIGENE STIMME aus.");
+    body ("Ein Dauerbett aus Gemurmel im Hintergrund, das unter den Rufen eine aufgeregte Menge h\xc3\xb6rbar macht. PEGEL regelt die Lautst\xc3\xa4rke, ganz links ist es aus. INTENSIT\xc3\x84T blendet stufenlos von leisem Raunen \xc3\xbc" "ber Gemurmel und angespannte Stimmung bis zur aufgebrachten Menge. Das Gemurmel wiederholt sich nicht h\xc3\xb6rbar, l\xc3\xa4uft auch ohne Eingang und geht durch denselben Raum wie die Menge. Willst du nur das Gemurmel, stellst du MENGE auf null und schaltest EIGENE STIMME aus.");
 
     head ("RAUM");
     body ("Wieviel Raum die Menge bekommt. Der Raum folgt der GR\xc3\x96SSE: in der Kneipe kurz und nah, im Stadion mit langem Nachhall und einzelnen Echos von den R\xc3\xa4ngen. Er liegt auch auf deiner eigenen Stimme, damit sie in der Menge steht und nicht davor.");
