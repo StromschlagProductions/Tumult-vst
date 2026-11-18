@@ -356,8 +356,8 @@ void TumultEditor::resized()
     amount.slider.setBounds (278, 104, 124, 118);
 
     crowdLabel.setBounds (432, 84, 224, 18);
-    display.setBounds (432, 104, w - 444, 82);
-    rerollButton.setBounds (432, 192, w - 444, 26);
+    display.setBounds (432, 104, w - 456, 82);
+    rerollButton.setBounds (432, 192, w - 456, 26);
 
     auto placeKnob = [] (Knob& k, int x, int y, int cw)
     {
