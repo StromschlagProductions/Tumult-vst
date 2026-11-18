@@ -176,6 +176,18 @@ int main()
         CHECK (q->getCurrentProgram() == 6);
     }
 
+    // Die manuell gewaehlte Besetzung meldet eine speicherrelevante Zustandsaenderung an den Host.
+    {
+        struct Listener final : juce::AudioProcessorListener
+        {
+            bool dirty = false;
+            void audioProcessorParameterChanged (juce::AudioProcessor*, int, float) override {}
+            void audioProcessorChanged (juce::AudioProcessor*, const ChangeDetails& details) override { dirty |= details.nonParameterStateChanged; }
+        } listener;
+        p->addListener (&listener); p->rerollCrowd(); p->removeListener (&listener);
+        CHECK (listener.dirty);
+    }
+
     // Wertefelder: Prozent, Dezimalkomma, aus und Intensitaetsnamen sind round-trip-faehig.
     {
         auto checkText = [&] (const char* id, const juce::String& text, float expected)

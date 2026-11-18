@@ -57,9 +57,9 @@ verkleinern. Das Seitenverhältnis bleibt dabei fest.
   leiser und breiter gestreut. So entsteht Tiefe, statt dass alle gleich weit weg sind.
 - **Stabile Besetzung, wechselnde Rufe:** Position und Stimmcharakter bleiben bis **NEUE LEUTE** erhalten. In jeder Sprechpause (je nach CHAOS und Größe ab etwa einer halben bis einer Sekunde Stille) variieren Beteiligung, Einsatz und Ausdruck. Die Personen ziehen dabei nicht nach jedem Ruf an einen anderen Ort. **NEUE LEUTE** würfelt von Hand neu, ebenfalls in der nächsten Pause.
 - **Fester Vorlauf von 500 ms:** TUMULT meldet ihn dem Host, der ihn ausgleicht. Dadurch darf ein Teil der Menge auch **vor** dem
-  Einsatz deiner Stimme beginnen, so wie es in einer echten Menge ist, in der ein paar Leute früher anfangen. Mit CHAOS verteilt sich der Einsatz weit: manche rufen deutlich vor dir, andere erst eine Weile danach. Während aktiver Sprache entwickeln sich zusätzlich begrenzte individuelle Zeitversätze. Das ist keine unabhängige Time-Stretch- oder Formant-Engine.
+  Einsatz deiner Stimme beginnen, so wie es in einer echten Menge ist, in der ein paar Leute früher anfangen. Mit CHAOS verteilt sich der Einsatz weit: manche rufen deutlich vor dir, andere erst eine Weile danach. Während aktiver Sprache entwickeln sich zusätzlich begrenzte individuelle Zeitversätze. Bei zuverlässig stimmhaften Passagen der nahen Stimmen trennt eine periodensynchrone Bearbeitung Tonhöhe, spektrale Klangfarbe und diesen Zeitverlauf. Bei unsicherer Analyse fällt sie weich auf die bisherige Bearbeitung zurück; die hintere Masse bleibt beim Delay-Verfahren.
 
-- **Gemurmel im Hintergrund:** Unter den Rufen läuft ein Dauerbett aus Gemurmel in fünf Stufen (Raunen, Gemurmel, angespannt, aufgebracht, Tumult). **AN / AUS** aktiviert das Bett unabhängig von der Eingangsstimme, **PEGEL** regelt seine Lautstärke und bleibt beim Ausschalten erhalten. **INTENSITÄT** blendet stufenlos zwischen den Stufen. Zufällige Ausschnitte und Wechsel reduzieren feste Wiederholungen: Die fünf Stufen besitzen vier, vier, eine, drei und zwei Aufnahmen; links und rechts laufen unabhängig voneinander, immer wieder an anderer Stelle und weich überblendet. Es geht durch denselben Raum wie die Menge und läuft auch ohne Eingang, also auch allein als Hintergrundmenge (MENGE auf null, EIGENE STIMME aus).
+- **Gemurmel im Hintergrund:** Unter den Rufen liegt ein Bett aus Gemurmel in fünf Stufen (Raunen, Gemurmel, angespannt, aufgebracht, Tumult). **AN / AUS** aktiviert das Bett unabhängig von der Eingangsstimme, **PEGEL** regelt seine Lautstärke und bleibt beim Ausschalten erhalten. **INTENSITÄT** blendet stufenlos zwischen den Stufen. Bei 0 % ist das Raunen leise und sporadisch mit weichen Pausen; bis 25 % wächst daraus ein durchgehendes Bett. Zufällige Ausschnitte und Wechsel reduzieren feste Wiederholungen: Die fünf Stufen besitzen vier, vier, eine, drei und zwei Aufnahmen; links und rechts laufen unabhängig voneinander, immer wieder an anderer Stelle und weich überblendet. Es geht durch denselben Raum wie die Menge und läuft auch ohne Eingang, also auch allein als Hintergrundmenge (MENGE auf null, EIGENE STIMME aus).
 
 ## Größen
 
@@ -91,7 +91,7 @@ Beim Umschalten gleiten die Stimmenpegel und Filter; zwei vorreservierte Räume 
 | | VIELFALT | 0 % klingen alle ähnlich wie eine Gruppe, 100 % entstehen stärker unterschiedliche Tonlagen (bis etwa sechs Halbtöne) mit eigenen Klangfärbungen; Alter und Geschlecht werden nicht unabhängig modelliert |
 | **GEMURMEL** | AN / AUS | Aktiviert das eigenständige Bett, auch auf einer leeren Spur ohne Aufnahme; automatisierbar und im Projekt gespeichert |
 | | PEGEL | Lautstärke des Gemurmels im Hintergrund, ganz links aus |
-| | INTENSITÄT | 0 % leises Raunen, in der Mitte angespannt, 100 % aufgebrachte Menge; die fünf Stufen blenden stufenlos ineinander, je aufgebrachter, desto etwas lauter |
+| | INTENSITÄT | 0 % leises, sporadisches Raunen mit Pausen, ab 25 % durchgehend, in der Mitte angespannt, 100 % aufgebrachte Menge; die fünf Stufen blenden stufenlos ineinander, je aufgebrachter, desto etwas lauter |
 | **RAUM** | RAUM | Wieviel Raum die Menge bekommt. Der Raum folgt der Größe. Er liegt auch auf der eigenen Stimme, damit sie in der Menge steht |
 | **MIX** | EIGENE STIMME | dein eingesprochenes Original, in Stereo erhalten (mit 500 ms Vorlauf), ganz links aus |
 | | OUTPUT | Gesamtpegel vor der Schutzsättigung am Ausgang; hohe Werte können den Klang verdichten |
@@ -127,6 +127,7 @@ Die Versionsnummer steht in der Datei `VERSION`, im Plugin-Kopf und im Namen der
 
 - **1.0** – Erste Version: der Stimmvervielfacher mit vier Größen, den Reglern MENGE, SYNCHRON, VIELFALT, RAUM, EIGENE STIMME und OUTPUT, einer Anzeige der Menge, NEUE LEUTE, acht Presets, Hell/Dunkel, skalierbarer Oberfläche und Hilfe. [Release-Hinweise](docs/releases/1.0.md).
 - **1.1** – Der Regler SYNCHRON heißt jetzt CHAOS und ist umgekehrt (0 % im Gleichschritt, 100 % ungeordnet). Der Einsatz streut viel weiter (Vorlauf 500 ms statt 200 ms), jede Stimme hat ein eigenes Sprechtempo, VIELFALT reicht weiter. [Release-Hinweise](docs/releases/1.1.md).
+- **1.4** – Ruhigeres, sporadisches Raunen bei 0 %, variablere Ausschnitte und getrennte Tonhöhen-/Klangfarbenvariation für sicher stimmhafte nahe Rufe. [Release-Hinweise](docs/releases/1.4.md), [Vergleichsbeispiele](docs/audio/README.md).
 - **1.3** – Eigenständiger GEMURMEL-Schalter, reparierte Werteingaben und Mono-Begrenzung, gespeicherte Besetzung, stabile Personen, aktive Sprachvariation, Stereo-Eigenstimme und überblendende Räume. [Release-Hinweise](docs/releases/1.3.md).
 - **1.2** – Neu: das Gemurmel im Hintergrund mit den Reglern PEGEL und INTENSITÄT (fünf Stufen, stufenlos überblendet), die Presets stellen es mit ein. Die Oberfläche ist etwas breiter geworden. [Release-Hinweise](docs/releases/1.2.md).
 
@@ -134,6 +135,7 @@ Die Versionsnummer steht in der Datei `VERSION`, im Plugin-Kopf und im Namen der
 ## Aufbau
 
 - `Source/TumultDSP.h`: Klang-Engine (reines C++ ohne JUCE)
+- `Source/VoiceModel.h`: gemeinsame Periodizitätsanalyse und periodensynchrone Vordergrundstimmen
 - `Assets/murmur/`: die eingebetteten Gemurmel-Aufnahmen (Ogg Vorbis, mono)
 - `Source/PluginProcessor.*`, `Source/PluginEditor.*`: JUCE-Plugin und Oberfläche
 - `tools/render_demo.cpp`: rendert Hörbeispiele aus der echten Engine, mit Testsignal oder mit einer eigenen WAV-Aufnahme
@@ -153,7 +155,7 @@ Die Engine ist getrennt von JUCE testbar. Der Windows-Workflow baut VST3 und fü
 - MENGE 70 % wurde anhand synthetischer Sprachsignale abgestimmt. Reale Lautheit und Sprachverständlichkeit hängen vom Eingang und von der Mischung ab.
 - Die Ausgangsstufe sättigt oberhalb 0,8 (etwa −1,94 dBFS) weich. Sie ist kein True-Peak-Limiter.
 
-Details, geprüfte Fehlerfälle und Grenzen: [Validierung 1.3](docs/VALIDATION-1.3.md).
+Details, geprüfte Fehlerfälle und Grenzen: [Validierung 1.4](docs/VALIDATION-1.4.md).
 
 Ob es echt klingt, entscheidet am Ende das Ohr. Rückmeldungen zum Klang sind deshalb besonders willkommen.
 

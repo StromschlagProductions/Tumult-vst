@@ -177,6 +177,7 @@ void TumultProcessor::rerollCrowd()
     const uint32_t next = (uint32_t) ((juce::Random::getSystemRandom().nextInt() | 1) & 0x7fffffff);
     seed.store (next);
     engine.requestSeed (next);
+    updateHostDisplay (juce::AudioProcessorListener::ChangeDetails{}.withNonParameterStateChanged (true));
 }
 
 double TumultProcessor::getTailLengthSeconds() const

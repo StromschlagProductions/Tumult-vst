@@ -16,6 +16,8 @@
 // von 500 ms (Latenz), damit die Menge auch VOR dem Einsatz der eigenen Stimme einsetzen kann. Jede Stimme hat ausserdem
 // ihren begrenzten Zeitverlauf waehrend aktiver Sprache (keine unabhaengige Time-Stretch-Engine).
 //
+// Vordergrund: periodensynchrone Fenster trennen bei sicherer stimmhafter Analyse Tonlage, Formantlage und Zeitverlauf.
+// Rueckfall und hintere Masse: bisherige Delay-Bearbeitung. Keine zusaetzlichen Bedienparameter.
 // Teil 2, GEMURMEL: ein Dauerbett aus Gemurmel in fuenf Stufen (leises Raunen ... aufgebrachte Menge). INTENSITAET blendet
 // stufenlos zwischen den Stufen. Jede Stufe besteht aus mehreren Aufnahmen; links und rechts laufen unabhaengige Spieler, die
 // in zufaelliger Reihenfolge und an zufaelligen Stellen weiterlaufen und weich ineinander ueberblenden, so dass sich nichts
@@ -31,6 +33,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include "VoiceModel.h"
 
 namespace tumult
 {
@@ -335,6 +338,7 @@ public:
         ownSide.assign ((size_t) latency, 0.0f);
         mask = (uint32_t) n - 1u;
         rev.prepare (fs);
+        analysis.prepare (fs);
         aGain = 1.0f - std::exp (-(float) kChunk / (0.04f * fs));
         aDelay = 1.0f - std::exp (-(float) kChunk / (0.25f * fs));
         aRatio = 1.0f - std::exp (-(float) kChunk / (0.12f * fs));
@@ -365,6 +369,7 @@ public:
         std::fill (ring.begin(), ring.end(), 0.0f);
         wpos = 0;
         rev.reset();
+        analysis.reset();
         rng = Rng (baseSeed);
         for (auto& q : v) { q = Voice(); }
         chunkPos = 0;
@@ -416,6 +421,7 @@ public:
 
             const float dry = ring[(wpos - (uint32_t) latency) & mask];
             ring[wpos & mask] = in;
+            analysis.push (in, wpos);
             ++wpos;
 
             ownCur += aSmooth * (ownTarget - ownCur);
@@ -448,7 +454,8 @@ private:
     {
         // Persoenlichkeit (wird nur in der Sprechpause neu gewuerfelt)
         bool participates = true;
-        float phraseDb = 0;
+        float phraseDb = 0, formant = 1.0f, formantN = 0.0f;
+        EpochVoice epoch;
         float jitter = 0, speedN = 0, semis = 0, pan = 0, depthU = 0.5f, levelDb = 0, hpHz = 200, peakHz = 1500, peakDb = 0, lpJit = 1;
         // Laufzeit
         float speechEnv = 0, filterMix = 1;
@@ -476,6 +483,7 @@ private:
                 q.peakHz = logLerp (700.0f, 3200.0f, people.uni());
                 q.peakDb = people.bi() * 4.0f; q.lpJit = 0.85f + 0.3f * people.uni();
                 q.filtSize = -1;
+                q.formantN = Rng (baseSeed ^ ((uint32_t) (i + 1) * 2246822519u)).bi();
             }
             q.participates = i < 6 || phrase.uni() < 0.88f;
             q.jitter = std::clamp (phrase.gauss() * 0.45f, -1.0f, 1.0f);
@@ -584,6 +592,7 @@ private:
             if (tL == 0.0f && tRr == 0.0f && q.gL < 1e-7f && q.gR < 1e-7f)
             {
                 q.gL = q.gR = 0.0f; q.vis *= 0.995f; q.speechEnv = 0.0f;
+                if (q.epoch.voicedMix() > 0) q.epoch.reset();
                 q.delay = tD[i]; q.ratio = tR[i];   // unhoerbar: gleich auf den Zielwert, damit beim Zuschalten nichts gleitet
                 continue;
             }
@@ -596,6 +605,13 @@ private:
             const float dD = (q.delay - D0) * (1.0f / (float) kChunk);
             const float dL = (q.gL - G0L) * (1.0f / (float) kChunk), dR = (q.gR - G0R) * (1.0f / (float) kChunk);
 
+            VoiceAnalysis::Frame voiceFrame;
+            if (front || q.epoch.voicedMix() > 0)
+            {
+                const float formantTarget = std::pow (2.0f, q.formantN * 2.0f * p.variety / 12.0f);
+                q.formant += aRatio * (formantTarget - q.formant);
+                voiceFrame = analysis.at (t0 - (uint32_t) std::lround (D0 + 0.5f * window));
+            }
             const bool single = tR[i] == 1.0f && std::fabs (q.ratio - 1.0f) < 0.003f;
             const float inc = single ? 0.0f : (1.0f - q.ratio) / window;
             float peak = 0.0f;
@@ -622,6 +638,12 @@ private:
                     float pb = ph + 0.5f;
                     if (pb >= 1.0f) pb -= 1.0f;
                     x += gB * readTap (t, D + pb * window);
+                }
+                if (front || q.epoch.voicedMix() > 0)
+                {
+                    const float meanDelay = D + 0.5f * window;
+                    x = q.epoch.process (x, t, meanDelay, q.ratio, q.formant, voiceFrame, front, analysis,
+                        [this] (uint32_t at, float delay) { return readTap (at, delay); });
                 }
                 q.speechEnv = std::max (std::fabs (x), q.speechEnv * envRelease);
                 q.hpState += q.hpA * (x - q.hpState);
@@ -663,7 +685,36 @@ private:
 
     //==========================================================================
     // Gemurmel
-    struct MHead { int take = 0; double pos = 0.0; };
+    struct MHead { int take = 0; double pos = 0.0, start = 0.0, end = 0.0; };
+    struct TakeOrder { std::array<int, 64> order {}; int count = 0, next = 0; };
+    struct Visit { int take = -1; double start = 0; };
+    struct VisitHistory { std::array<Visit, 16> recent {}; int next = 0, count = 0; };
+    struct MurmurGap
+    {
+        Rng random { 1 };
+        int remaining = 0, total = 1;
+        bool active = false;
+        void prepare (float fs, uint32_t seed)
+        {
+            random = Rng (seed); active = false;
+            remaining = total = std::max (1, (int) std::lround (fs * (0.15f + 0.55f * random.uni())));
+        }
+        float tick (float fs)
+        {
+            if (remaining <= 0)
+            {
+                active = ! active;
+                const float seconds = active ? 0.9f + 1.5f * random.uni() : 1.8f + 3.0f * random.uni();
+                remaining = total = std::max (1, (int) std::lround (seconds * fs));
+            }
+            const float phase = 1.0f - (float) remaining / (float) total;
+            --remaining;
+            if (! active) return 0;
+            const float a = std::clamp (phase / 0.22f, 0.0f, 1.0f);
+            const float r = std::clamp ((1.0f - phase) / 0.35f, 0.0f, 1.0f);
+            return a * a * (3 - 2 * a) * r * r * (3 - 2 * r);
+        }
+    };
     struct MPlayer { MHead a, b; bool fading = false; float t = 0.0f; };
 
     float readTake (const std::vector<int16_t>& y, double pos) const
@@ -679,10 +730,58 @@ private:
         return ((c3 * f + c2) * f + c1) * f + y0;
     }
 
-    double randomStart (const std::vector<int16_t>& take)
+    int nextTake (int lv, int side, int avoid)
     {
-        const double room = std::max (0.0, (double) take.size() - 3.0 * mXf);
-        return (double) mrng.uni() * room;
+        const int n = (int) bank->level[lv].size();
+        if (n > 64)
+        {
+            if (avoid < 0) return (int) (mrng.uni() * (float) n) % n;
+            const int r = (int) (mrng.uni() * (float) (n - 1)) % (n - 1);
+            return r >= avoid ? r + 1 : r;
+        }
+        auto& order = takeOrder[lv][side];
+        if (order.count != n || order.next >= n)
+        {
+            order.count = n; order.next = 0;
+            for (int i = 0; i < n; ++i) order.order[(size_t) i] = i;
+            for (int i = n - 1; i > 0; --i)
+                std::swap (order.order[(size_t) i], order.order[(size_t) ((int) (mrng.uni() * (float) (i + 1)))]);
+            if (n > 1 && order.order[0] == avoid)
+                std::swap (order.order[0], order.order[(size_t) (1 + (int) (mrng.uni() * (float) (n - 1)))]);
+        }
+        return order.order[(size_t) order.next++];
+    }
+
+    MHead newHead (int lv, int side, int avoid)
+    {
+        MHead head; head.take = nextTake (lv, side, avoid);
+        const auto& take = bank->level[lv][(size_t) head.take];
+        const double length = std::max (1.0, std::min ((double) take.size() - 2.0 * mStep,
+            mXf * (2.2 + 2.3 * mrng.uni())));
+        const double room = std::max (0.0, (double) take.size() - length - 2.0 * mStep);
+        auto& history = visits[lv];
+        const auto& other = mp[lv][1 - side];
+        const auto& current = mp[lv][side];
+        double bestScore = -1, chosen = 0;
+        for (int candidate = 0; candidate < 12; ++candidate)
+        {
+            const double start = mrng.uni() * room;
+            double score = room;
+            for (int i = 0; i < history.count; ++i)
+                if (history.recent[(size_t) i].take == head.take)
+                    score = std::min (score, std::abs (start - history.recent[(size_t) i].start));
+            auto avoidHead = [&] (const MHead& h)
+            {
+                if (h.end > 0 && h.take == head.take) score = std::min (score, 0.6 * std::abs (start - h.pos));
+            };
+            avoidHead (other.a); if (other.fading) avoidHead (other.b); avoidHead (current.a);
+            if (score > bestScore) { bestScore = score; chosen = start; }
+        }
+        head.pos = head.start = chosen; head.end = chosen + length;
+        history.recent[(size_t) history.next] = { head.take, chosen };
+        history.next = (history.next + 1) % (int) history.recent.size();
+        history.count = std::min ((int) history.recent.size(), history.count + 1);
+        return head;
     }
 
     void initMurmur()
@@ -690,7 +789,14 @@ private:
         mrng = Rng (baseSeed * 2654435761u + 12345u);
         mInit = false;
         for (auto& w : mW) w = 0.0f;
-        mG = 0.0f;
+        mG = 0.0f; mDensity = 1.0f;
+        for (int lv = 0; lv < kNumMurmurLevels; ++lv)
+        {
+            visits[lv] = VisitHistory();
+            for (int side = 0; side < 2; ++side) { mp[lv][side] = MPlayer(); takeOrder[lv][side] = TakeOrder(); }
+        }
+        for (int side = 0; side < 2; ++side)
+            gaps[side].prepare (fs, baseSeed ^ (0x85ebca6bu * (uint32_t) (side + 1)));
         if (! bank) return;
         mStep = bank->rate / (double) fs;
         size_t minLen = ~(size_t) 0;
@@ -701,15 +807,13 @@ private:
             for (int s = 0; s < 2; ++s)
             {
                 auto& pl = mp[lv][s];
-                const auto& takes = bank->level[lv];
-                pl = MPlayer();
-                pl.a.take = (int) (mrng.uni() * (float) takes.size()) % (int) takes.size();
-                pl.a.pos = randomStart (takes[(size_t) pl.a.take]);
+                pl.a = newHead (lv, s, -1);
             }
     }
 
-    float tickPlayer (int lv, MPlayer& pl)
+    float tickPlayer (int lv, int side)
     {
+        auto& pl = mp[lv][side];
         const auto& takes = bank->level[lv];
         const auto& ta = takes[(size_t) pl.a.take];
         const float ya = readTake (ta, pl.a.pos);
@@ -723,13 +827,9 @@ private:
             const float sm = pl.t * pl.t * (3.0f - 2.0f * pl.t);
             return ya * std::sqrt (1.0f - sm) + yb * std::sqrt (sm);   // unabhaengige Aufnahmen: gleiche Leistung
         }
-        if (pl.a.pos > (double) ta.size() - mXf)
+        if (pl.a.pos > pl.a.end - mXf)
         {
-            const int n = (int) takes.size();
-            int idx = pl.a.take;
-            if (n > 1) { const int r = (int) (mrng.uni() * (float) (n - 1)) % (n - 1); idx = r >= pl.a.take ? r + 1 : r; }
-            pl.b.take = idx;
-            pl.b.pos = randomStart (takes[(size_t) idx]);
+            pl.b = newHead (lv, side, pl.a.take);
             pl.t = 0.0f;
             pl.fading = true;
         }
@@ -748,8 +848,17 @@ private:
         wT[lo + 1] = std::sin (fr * kPi * 0.5f);
         const float tilt = dbToLin (3.0f * p.wallaInt);   // je aufgebrachter, desto etwas lauter
         const float gT = p.wallaEnabled ? p.walla * p.walla * kMurmurCal * tilt : 0.0f;
-        if (! mInit) { for (int i = 0; i < kNumMurmurLevels; ++i) mW[i] = wT[i]; mG = 0.0f; mInit = true; }
-        if (gT < 1e-6f && mG < 1e-6f) { mG = 0.0f; return; }
+        const float densityX = std::clamp (p.wallaInt * 4.0f, 0.0f, 1.0f);
+        const float densityTarget = densityX * densityX * (3.0f - 2.0f * densityX);
+        if (! mInit)
+        {
+            for (int i = 0; i < kNumMurmurLevels; ++i) mW[i] = wT[i];
+            mG = 0; mDensity = densityTarget; mInit = true;
+        }
+        const float density0 = mDensity;
+        mDensity += aMix * (densityTarget - mDensity);
+        if (std::abs (mDensity - densityTarget) < 1e-6f) mDensity = densityTarget;
+        const float densityStep = (mDensity - density0) / (float) kChunk;
 
         float w0[kNumMurmurLevels], dw[kNumMurmurLevels];
         for (int i = 0; i < kNumMurmurLevels; ++i)
@@ -768,6 +877,7 @@ private:
         const float g0 = mG;
         mG += aGain * (gT - mG);
         const float dg = (mG - g0) * (1.0f / (float) kChunk);
+        if (gT < 1e-6f && mG < 1e-6f) { mG = 0.0f; return; }
         int act[kNumMurmurLevels], na = 0;
         for (int i = 0; i < kNumMurmurLevels; ++i) if (w0[i] > 1e-5f || mW[i] > 1e-5f) act[na++] = i;
         for (int k = 0; k < kChunk; ++k)
@@ -778,16 +888,24 @@ private:
             {
                 const int lv = act[j];
                 const float w = (w0[lv] + dw[lv] * (float) k) * g;
-                l += w * tickPlayer (lv, mp[lv][0]);
-                r += w * tickPlayer (lv, mp[lv][1]);
+                l += w * tickPlayer (lv, 0);
+                r += w * tickPlayer (lv, 1);
             }
-            stageL[k] += l;
-            stageR[k] += r;
+            const float density = density0 + densityStep * (float) k;
+            const float quietGain = 0.70710678f + 0.29289322f * density;
+            // Bei 0 % einzelne weiche Gruppen mit Pausen, ab 25 % das volle Dauerbett.
+            const float leftMotion = gaps[0].tick (fs), rightMotion = gaps[1].tick (fs);
+            stageL[k] += l * quietGain * (density + (1 - density) * leftMotion);
+            stageR[k] += r * quietGain * (density + (1 - density) * rightMotion);
         }
     }
 
     std::shared_ptr<const MurmurBank> bank;
     MPlayer mp[kNumMurmurLevels][2];
+    TakeOrder takeOrder[kNumMurmurLevels][2];
+    VisitHistory visits[kNumMurmurLevels];
+    MurmurGap gaps[2];
+    float mDensity = 1;
     Rng mrng { 7 };
     double mStep = 0.5, mXf = 72000.0;
     float mXfInc = 1e-5f, mW[kNumMurmurLevels] = {}, mG = 0.0f, aMix = 0.001f;
@@ -799,6 +917,7 @@ private:
     int ownPos = 0;
     uint32_t mask = 0, wpos = 0;
     Room rev;
+    VoiceAnalysis analysis;
     std::array<Voice, kMaxVoices> v;
     Rng rng { 1 };
     uint32_t baseSeed = 1, phraseIndex = 0;

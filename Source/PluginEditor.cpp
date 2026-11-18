@@ -64,8 +64,12 @@ static juce::AttributedString buildHelp (juce::Colour text, juce::Colour accent,
     head ("VIELFALT");
     body ("Wie unterschiedlich die Leute klingen. Ganz links klingen alle \xc3\xa4hnlich wie eine Gruppe. Weiter rechts mischen sich tiefere und h\xc3\xb6here Tonlagen (bis etwa sechs Halbt\xc3\xb6ne), dazu kommen eigene Klangf\xc3\xa4rbungen.");
 
+    body ("Bei klar stimmhaften Rufen werden Tonlage und Klangfarbe der nahen Stimmen getrennt variiert. Bei Flüstern und rauen Passagen bleibt die bisherige Bearbeitung als Rückfall aktiv.");
+
     head ("GEMURMEL");
-    body ("Ein Dauerbett aus Gemurmel im Hintergrund, das unter den Rufen eine aufgeregte Menge h\xc3\xb6rbar macht. AN / AUS schaltet das Bett unabh\xc3\xa4ngig vom Eingang ein. PEGEL regelt die Lautst\xc3\xa4rke und bleibt beim Ausschalten erhalten. Auch auf einer leeren Spur ist kein Eingangssignal erforderlich. INTENSIT\xc3\x84T blendet stufenlos von leisem Raunen \xc3\xbc" "ber Gemurmel und angespannte Stimmung bis zur aufgebrachten Menge. Zuf\xc3\xa4llige Ausschnitte und weiche Wechsel reduzieren feste Wiederholungen; es l\xc3\xa4uft auch ohne Eingang und geht durch denselben Raum wie die Menge. Willst du nur das Gemurmel, stellst du MENGE auf null und schaltest EIGENE STIMME aus.");
+    body ("Ein Bett aus Gemurmel im Hintergrund, das unter den Rufen eine aufgeregte Menge h\xc3\xb6rbar macht. AN / AUS schaltet das Bett unabh\xc3\xa4ngig vom Eingang ein. PEGEL regelt die Lautst\xc3\xa4rke und bleibt beim Ausschalten erhalten. Auch auf einer leeren Spur ist kein Eingangssignal erforderlich. INTENSIT\xc3\x84T blendet stufenlos von leisem Raunen \xc3\xbc" "ber Gemurmel und angespannte Stimmung bis zur aufgebrachten Menge. Zuf\xc3\xa4llige Ausschnitte und weiche Wechsel reduzieren feste Wiederholungen; es l\xc3\xa4uft auch ohne Eingang und geht durch denselben Raum wie die Menge. Willst du nur das Gemurmel, stellst du MENGE auf null und schaltest EIGENE STIMME aus.");
+
+    body ("Bei 0 % INTENSITÄT ist das Raunen leise und sporadisch, mit weichen Pausen. Bis 25 % geht es in ein durchgehendes Bett über. PEGEL bleibt der unabhängige Lautstärkeregler.");
 
     head ("RAUM");
     body ("Wieviel Raum die Menge bekommt. Der Raum folgt der GR\xc3\x96SSE: in der Kneipe kurz und nah, im Stadion mit langem Nachhall und einzelnen Echos von den R\xc3\xa4ngen. Er liegt auch auf deiner eigenen Stimme, damit sie in der Menge steht und nicht davor.");
@@ -152,6 +156,7 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
     {
         theme = theme.dark ? lightTheme() : darkTheme();
         processor.uiTheme.store (theme.dark ? 0 : 1);
+        processor.updateHostDisplay (juce::AudioProcessorListener::ChangeDetails{}.withNonParameterStateChanged (true));
         applyTheme();
     };
     content.addAndMakeVisible (themeButton);
@@ -170,8 +175,8 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
     amount.slider.setTooltip (u8 ("Lautst\xc3\xa4rke der Menge. Bei etwa 70 % ist sie ungef\xc3\xa4hr so laut wie deine eingesprochene Stimme."));
     chaos.slider.setTooltip (u8 ("Wie ungeordnet die Menge ruft: links im Gleichschritt wie ein Sprechchor, rechts mit weit gestreutem Einsatz und unterschiedlichem Sprechtempo."));
     variety.slider.setTooltip (u8 ("Wie unterschiedlich die Leute klingen: links eine \xc3\xa4hnliche Gruppe, rechts unterschiedlichere Tonlagen und Klangfarben."));
-    walla.slider.setTooltip (u8 ("Lautst\xc3\xa4rke des Gemurmels. Mit AN / AUS aktivieren, auch ohne Aufnahme. Das Gemurmel l\xc3\xa4uft dauernd unter den Rufen und geht durch denselben Raum. Es geht auch allein: MENGE auf null und EIGENE STIMME aus."));
-    wallaInt.slider.setTooltip (u8 ("Wie aufgeregt das Gemurmel ist: links leises Raunen, in der Mitte angespannt, rechts eine aufgebrachte Menge. Die Stufen blenden stufenlos ineinander."));
+    walla.slider.setTooltip (u8 ("Lautst\xc3\xa4rke des Gemurmels. Mit AN / AUS aktivieren, auch ohne Aufnahme. Das Gemurmel liegt unter den Rufen und geht durch denselben Raum. Es geht auch allein: MENGE auf null und EIGENE STIMME aus."));
+    wallaInt.slider.setTooltip (u8 ("Wie aufgeregt das Gemurmel ist: links sporadisches, leises Raunen mit Pausen, in der Mitte angespannt, rechts eine aufgebrachte Menge. Die Stufen blenden stufenlos ineinander."));
     room.slider.setTooltip (u8 ("Wieviel Raum die Menge bekommt. Der Raum folgt der GR\xc3\x96SSE (Kneipe bis Stadion mit Echo von den R\xc3\xa4ngen)."));
     own.slider.setTooltip (u8 ("Dein eingesprochenes Original (mit 500 ms Vorlauf). Ganz links aus: dann ruft nur die Menge."));
     output.slider.setTooltip (u8 ("Gesamtpegel vor der Schutzs\xc3\xa4ttigung am Ausgang. Hohe Pegel k\xc3\xb6nnen den Klang verdichten."));
