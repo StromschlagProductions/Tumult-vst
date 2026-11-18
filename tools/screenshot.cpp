@@ -13,7 +13,7 @@ public:
         // Eine kurze Sprechprobe durch die Engine schicken, damit die Anzeige die Menge mit leuchtenden Stimmen zeigt
         juce::AudioBuffer<float> b (2, 512);
         juce::MidiBuffer midi;
-        for (int block = 0; block < 130; ++block)
+        for (int block = 0; block < 116; ++block)   // endet mitten in einem Ruf (1,24 s), damit die Stimmen leuchten
         {
             for (int i = 0; i < 512; ++i)
             {
