@@ -54,11 +54,11 @@ verkleinern. Das Seitenverhältnis bleibt dabei fest.
   Stimmen, die Streuung des Einsatzes, die Breite im Stereobild, die Dumpfheit der hinteren Reihen und der Raum.
 - **Staffelung:** Wenige Stimmen stehen vorne und sind deutlich, hell und nah am Einsatz. Die Masse dahinter ist dumpfer,
   leiser und breiter gestreut. So entsteht Tiefe, statt dass alle gleich weit weg sind.
-- **Jeder Ruf klingt anders:** In jeder Sprechpause (ab etwa einer halben Sekunde Stille) würfelt TUMULT die Menge neu: wer
+- **Jeder Ruf klingt anders:** In jeder Sprechpause (je nach CHAOS und Größe ab etwa einer halben bis einer Sekunde Stille) würfelt TUMULT die Menge neu: wer
   mitruft, wer früher oder später kommt, welche Stimmlage jeder hat. Mitten im Ruf ändert sich nie etwas, deshalb knackt
   nichts. **NEUE LEUTE** würfelt von Hand neu, ebenfalls in der nächsten Pause.
-- **Fester Vorlauf von 200 ms:** TUMULT meldet ihn dem Host, der ihn ausgleicht. Dadurch darf ein Teil der Menge auch **vor** dem
-  Einsatz deiner Stimme beginnen, so wie es in einer echten Menge ist, in der ein paar Leute früher anfangen.
+- **Fester Vorlauf von 500 ms:** TUMULT meldet ihn dem Host, der ihn ausgleicht. Dadurch darf ein Teil der Menge auch **vor** dem
+  Einsatz deiner Stimme beginnen, so wie es in einer echten Menge ist, in der ein paar Leute früher anfangen. Mit CHAOS verteilt sich der Einsatz weit: manche rufen deutlich vor dir, andere erst eine Weile danach. Jeder hat außerdem sein eigenes Sprechtempo, einer etwas schneller, ein anderer etwas langsamer.
 
 ## Größen
 
@@ -86,10 +86,10 @@ Beim Umschalten blendet TUMULT weich über, die Größe lässt sich also auch mi
 
 | Kasten | Regler | Wirkung |
 |---|---|---|
-| **CHOR** | SYNCHRON | 0 % ein ungeordneter Haufen mit weit gestreutem Einsatz, 100 % fast im Gleichschritt wie ein eingeübter Sprechchor. Wie weit der Einsatz gestreut wird, hängt außerdem von der Größe ab |
-| | VIELFALT | 0 % klingen alle ähnlich wie eine Gruppe, 100 % mischen sich tiefere und höhere Lagen (Männer, Frauen, Jugendliche, bis etwa fünf Halbtöne) mit eigenen Klangfärbungen |
+| **CHOR** | CHAOS | 0 % fast im Gleichschritt wie ein eingeübter Sprechchor, 100 % ein ungeordneter Haufen mit weit gestreutem Einsatz (im Stadion über eine Drittelsekunde) und unterschiedlichem Sprechtempo. Wie weit der Einsatz gestreut wird, hängt außerdem von der Größe ab |
+| | VIELFALT | 0 % klingen alle ähnlich wie eine Gruppe, 100 % mischen sich tiefere und höhere Lagen (Männer, Frauen, Jugendliche, bis etwa sechs Halbtöne) mit eigenen Klangfärbungen |
 | **RAUM** | RAUM | Wieviel Raum die Menge bekommt. Der Raum folgt der Größe. Er liegt auch auf der eigenen Stimme, damit sie in der Menge steht |
-| **MIX** | EIGENE STIMME | dein eingesprochenes Original (mit 200 ms Vorlauf), ganz links aus |
+| **MIX** | EIGENE STIMME | dein eingesprochenes Original (mit 500 ms Vorlauf), ganz links aus |
 | | OUTPUT | Gesamtpegel am Ausgang |
 
 **Presets** (erscheinen in der Preset-Liste des Hosts, setzen nur die Regler): Kneipe, Kleine Demo, Protestzug, Marktplatz,
@@ -97,13 +97,13 @@ Großdemo auf dem Platz, Sporthalle, Stadion-Chor und Stadion-Jubel.
 
 ## Anwendung
 
-**Protestzug:** Ruf einmal einsprechen („Wir wollen keine Mauer!“), TUMULT auf die Spur, Preset „Protestzug“. SYNCHRON etwas
-höher, wenn die Leute geübt wirken sollen, tiefer für einen spontanen Haufen.
+**Protestzug:** Ruf einmal einsprechen („Wir wollen keine Mauer!“), TUMULT auf die Spur, Preset „Protestzug“. CHAOS etwas
+niedriger, wenn die Leute geübt wirken sollen, höher für einen spontanen Haufen.
 
-**Sprechchor im Stadion:** Preset „Stadion-Chor“, EIGENE STIMME leise lassen oder abschalten. Mit SYNCHRON steuerst du, wie
+**Sprechchor im Stadion:** Preset „Stadion-Chor“, EIGENE STIMME leise lassen oder abschalten. Mit CHAOS steuerst du, wie
 sauber der Chor im Takt ist.
 
-**Saal, der mitruft:** Mittel oder Groß, VIELFALT hoch, SYNCHRON niedrig, ein bisschen mehr RAUM.
+**Saal, der mitruft:** Mittel oder Groß, VIELFALT hoch, CHAOS hoch, ein bisschen mehr RAUM.
 
 **Kneipe, in der ein paar Leute zustimmend rufen:** Klein, MENGE etwas zurück, EIGENE STIMME als Hauptstimme dazu.
 
@@ -120,6 +120,7 @@ sauber der Chor im Takt ist.
 Die Versionsnummer steht in der Datei `VERSION`, im Plugin-Kopf und im Namen der Release. Sie wird bei jeder Änderung hochgezählt (1.0, 1.1, 1.2 …).
 
 - **1.0** – Erste Version: der Stimmvervielfacher mit vier Größen, den Reglern MENGE, SYNCHRON, VIELFALT, RAUM, EIGENE STIMME und OUTPUT, einer Anzeige der Menge, NEUE LEUTE, acht Presets, Hell/Dunkel, skalierbarer Oberfläche und Hilfe. [Release-Hinweise](docs/releases/1.0.md).
+- **1.1** – Der Regler SYNCHRON heißt jetzt CHAOS und ist umgekehrt (0 % im Gleichschritt, 100 % ungeordnet). Der Einsatz streut viel weiter (Vorlauf 500 ms statt 200 ms), jede Stimme hat ein eigenes Sprechtempo, VIELFALT reicht weiter. [Release-Hinweise](docs/releases/1.1.md).
 
 Das Gemurmel im Hintergrund (Walla), das unter den Rufen eine aufgeregte Menge hörbar macht, folgt als zweiter Teil des Plugins.
 
@@ -140,7 +141,7 @@ Wenige Regler heißen nicht, dass hier etwas schnell zusammengeschustert wurde. 
 - **Mono-kompatibel:** Alle Stimmen sind zeitlich versetzt und im Stereobild verteilt. Die Mono-Summe löscht sich nicht aus und klingt nicht hohl.
 - **Saubere Übergänge:** Alle Regler gleiten, die Größe blendet weich über. Auch bei laufend automatisierten Reglern knackt nichts, getestet mit einem reinen Ton.
 - **Menge wird nur in Pausen neu gewürfelt:** Die Zusammensetzung ändert sich nie mitten im Ruf. Eine Instanz merkt sich ihre Menge im Projekt, dieselbe Aufnahme ergibt beim erneuten Abspielen dasselbe Ergebnis.
-- **Fester, gemeldeter Vorlauf:** 200 ms, exakt getestet, vom Host ausgeglichen.
+- **Fester, gemeldeter Vorlauf:** 500 ms, exakt getestet, vom Host ausgeglichen.
 - **Kein Loop, keine Samples:** Die Menge entsteht ausschließlich aus deiner eigenen Aufnahme, es sind keine Audiodateien eingebettet.
 - **Pegel nach Messung abgestimmt:** MENGE 70 % entspricht bei allen Größen ungefähr der Lautheit der Eingangsstimme. Die Hörbeispiele werden aus derselben Engine gerendert.
 - **Rechenaufwand:** in meinen Messungen etwa 1 % eines Prozessorkerns für Klein und etwa 5 % für Stadion (48 kHz).

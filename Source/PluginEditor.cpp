@@ -44,7 +44,7 @@ static juce::AttributedString buildHelp (juce::Colour text, juce::Colour accent,
 
     head ("Einrichten");
     body ("Du sprichst oder spielst einen Ruf einmal ein, zum Beispiel \xe2\x80\x9eWir wollen keine Mauer!\xe2\x80\x9c. TUMULT macht daraus eine Menschenmenge, die denselben Text ruft. Lege das Plugin direkt auf die Spur mit deiner Stimme (Mono oder Stereo). Die Menge ersetzt den Eingang; deine eigene Stimme steht als einzelner Regler daneben (EIGENE STIMME).");
-    note ("TUMULT arbeitet mit einem festen Vorlauf von 200 Millisekunden, damit die Menge auch vor deinem Einsatz anfangen darf. Der Host gleicht das automatisch aus. Wer mit eingeschaltetem Monitoring live einspricht, nimmt dafür besser die trockene Spur.");
+    note ("TUMULT arbeitet mit einem festen Vorlauf von 500 Millisekunden, damit die Menge auch vor deinem Einsatz anfangen darf. Der Host gleicht das automatisch aus. Wer mit eingeschaltetem Monitoring live einspricht, nimmt dafür besser die trockene Spur.");
 
     head ("GR\xc3\x96SSE");
     body ("Wie viele Leute und wo sie stehen. Klein: 10 Leute, kurzer Raum (Kneipe, Hinterhof). Mittel: 24 Leute, mittlerer Raum (Platz, Saal). Gro\xc3\x9f: 40 Leute mit Echo von den W\xc3\xa4nden (Halle). Stadion: 64 Stimmen, langer Nachhall und Echo von den R\xc3\xa4ngen. Mit der Gr\xc3\xb6\xc3\x9f" "e ändern sich Zahl der Stimmen, Streuung, Stereobreite, Dumpfheit der hinteren Reihen und der Raum.");
@@ -56,10 +56,10 @@ static juce::AttributedString buildHelp (juce::Colour text, juce::Colour accent,
     body ("Die Menge von oben: unten stehst du als H\xc3\xb6rer, links und rechts ist das Stereobild, nach hinten wird es dumpfer und leiser. Jeder Punkt ist eine Stimme und leuchtet, wenn sie gerade ruft. Vorne stehen wenige deutliche Stimmen, dahinter die Masse.");
 
     head ("NEUE LEUTE");
-    body ("W\xc3\xbcrfelt die Menge neu: Wer steht wo, wer ruft fr\xc3\xbcher oder sp\xc3\xa4ter, wer hat welche Stimmlage. Das geschieht in der n\xc3\xa4" "chsten Sprechpause, nie mitten in einem Ruf, damit nichts knackt. Von allein w\xc3\xbcrfelt TUMULT nach jeder l\xc3\xa4ngeren Pause neu (rund eine halbe Sekunde Stille), darum klingt jede Wiederholung eines Rufs ein wenig anders.");
+    body ("W\xc3\xbcrfelt die Menge neu: Wer steht wo, wer ruft fr\xc3\xbcher oder sp\xc3\xa4ter, wer hat welche Stimmlage. Das geschieht in der n\xc3\xa4" "chsten Sprechpause, nie mitten in einem Ruf, damit nichts knackt. Von allein w\xc3\xbcrfelt TUMULT nach jeder l\xc3\xa4ngeren Pause neu (je nach CHAOS und Gr\xc3\xb6\xc3\x9f" "e rund eine halbe bis eine Sekunde Stille), darum klingt jede Wiederholung eines Rufs ein wenig anders.");
 
-    head ("SYNCHRON");
-    body ("Wie gleichm\xc3\xa4\xc3\x9fig die Menge ruft. Ganz links ist es ein ungeordneter Haufen mit weit gestreutem Einsatz, ganz rechts rufen die Leute fast im Gleichschritt, wie ein eingeübter Sprechchor. Wie weit der Einsatz gestreut wird, h\xc3\xa4ngt zus\xc3\xa4tzlich von der Gr\xc3\xb6\xc3\x9f" "e ab: in einem Stadion kommt der Ruf von weiter weg und ist weiter verschmiert.");
+    head ("CHAOS");
+    body ("Wie gleichm\xc3\xa4\xc3\x9fig die Menge ruft. Ganz links rufen die Leute fast im Gleichschritt, wie ein einge\xc3\xbc" "bter Sprechchor. Je weiter du aufdrehst, desto mehr streut der Einsatz: Manche rufen deutlich vor dir, andere erst eine Weile danach, und jeder hat sein eigenes Sprechtempo, einer etwas schneller, ein anderer etwas langsamer. Wie weit es streut, h\xc3\xa4ngt zus\xc3\xa4tzlich von der Gr\xc3\xb6\xc3\x9f" "e ab: in einem Stadion kommt der Ruf von weiter weg und ist weiter verschmiert.");
 
     head ("VIELFALT");
     body ("Wie unterschiedlich die Leute klingen. Ganz links klingen alle \xc3\xa4hnlich wie eine Gruppe. Weiter rechts mischen sich tiefere und h\xc3\xb6here Lagen (M\xc3\xa4nner, Frauen, Jugendliche, bis etwa f\xc3\xbcnf Halbt\xc3\xb6ne), dazu kommen eigene Klangf\xc3\xa4rbungen.");
@@ -101,7 +101,7 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
     setLookAndFeel (&look);
 
     setupKnob (amount, "amount", "MENGE");
-    setupKnob (tight, "tight", "SYNCHRON");
+    setupKnob (chaos, "chaos", "CHAOS");
     setupKnob (variety, "variety", "VIELFALT");
     setupKnob (room, "room", "RAUM");
     setupKnob (own, "own", "EIGENE STIMME");
@@ -153,10 +153,10 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
 
     // Tooltips
     amount.slider.setTooltip (u8 ("Lautst\xc3\xa4rke der Menge. Bei etwa 70 % ist sie ungef\xc3\xa4hr so laut wie deine eingesprochene Stimme."));
-    tight.slider.setTooltip (u8 ("Wie gleichm\xc3\xa4\xc3\x9f" "ig die Menge ruft: links ungeordneter Haufen, rechts fast im Gleichschritt wie ein Sprechchor."));
+    chaos.slider.setTooltip (u8 ("Wie ungeordnet die Menge ruft: links im Gleichschritt wie ein Sprechchor, rechts mit weit gestreutem Einsatz und unterschiedlichem Sprechtempo."));
     variety.slider.setTooltip (u8 ("Wie unterschiedlich die Leute klingen: links eine \xc3\xa4hnliche Gruppe, rechts M\xc3\xa4nner, Frauen und Jugendliche gemischt."));
     room.slider.setTooltip (u8 ("Wieviel Raum die Menge bekommt. Der Raum folgt der GR\xc3\x96SSE (Kneipe bis Stadion mit Echo von den R\xc3\xa4ngen)."));
-    own.slider.setTooltip (u8 ("Dein eingesprochenes Original (mit 200 ms Vorlauf). Ganz links aus: dann ruft nur die Menge."));
+    own.slider.setTooltip (u8 ("Dein eingesprochenes Original (mit 500 ms Vorlauf). Ganz links aus: dann ruft nur die Menge."));
     output.slider.setTooltip (u8 ("Gesamtpegel am Ausgang."));
     rerollButton.setTooltip (u8 ("W\xc3\xbcrfelt die Menge in der n\xc3\xa4" "chsten Sprechpause neu: wer wo steht, wer fr\xc3\xbc" "her oder sp\xc3\xa4ter ruft, welche Stimmlage."));
     display.setTooltip (u8 ("Die Menge von oben. Unten bist du, links und rechts ist das Stereobild, hinten ist es dumpfer und leiser. Jeder Punkt ist eine Stimme."));
@@ -356,8 +356,8 @@ void TumultEditor::resized()
         k.label.setBounds (x, y, cw, 18);
         k.slider.setBounds (x + 10, y + 20, cw - 20, 118);
     };
-    // CHOR: SYNCHRON, VIELFALT
-    placeKnob (tight, 16, 264, 108);
+    // CHOR: CHAOS, VIELFALT
+    placeKnob (chaos, 16, 264, 108);
     placeKnob (variety, 124, 264, 108);
     // RAUM
     placeKnob (room, 248, 264, 132);

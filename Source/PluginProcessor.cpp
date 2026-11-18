@@ -12,16 +12,16 @@ namespace
 {
 constexpr float kOwnMin = -60.0f, kOwnMax = 6.0f;   // EIGENE STIMME in dB, ganz links = aus
 
-struct Preset { const char* name; int size; float amount, tight, variety, room, ownDb; };
+struct Preset { const char* name; int size; float amount, chaos, variety, room, ownDb; };
 const Preset kPresets[] = {
-    { "Kneipe",                    0, 0.70f, 0.40f, 0.70f, 0.30f, -3.0f },
-    { "Kleine Demo",               1, 0.70f, 0.65f, 0.55f, 0.20f, -3.0f },
-    { "Protestzug",                1, 0.75f, 0.60f, 0.65f, 0.30f, -3.0f },
-    { "Marktplatz",                1, 0.70f, 0.25f, 0.90f, 0.45f, -6.0f },
-    { "Gro\xc3\x9f" "demo auf dem Platz", 2, 0.75f, 0.60f, 0.75f, 0.40f, -3.0f },
+    { "Kneipe",                    0, 0.70f, 0.60f, 0.70f, 0.30f, -3.0f },
+    { "Kleine Demo",               1, 0.70f, 0.35f, 0.55f, 0.20f, -3.0f },
+    { "Protestzug",                1, 0.75f, 0.40f, 0.65f, 0.30f, -3.0f },
+    { "Marktplatz",                1, 0.70f, 0.75f, 0.90f, 0.45f, -6.0f },
+    { "Gro\xc3\x9f" "demo auf dem Platz", 2, 0.75f, 0.40f, 0.75f, 0.40f, -3.0f },
     { "Sporthalle",                2, 0.75f, 0.50f, 0.80f, 0.55f, -6.0f },
-    { "Stadion-Chor",              3, 0.80f, 0.75f, 0.80f, 0.45f, -6.0f },
-    { "Stadion-Jubel",             3, 0.80f, 0.20f, 1.00f, 0.55f, -80.0f },
+    { "Stadion-Chor",              3, 0.80f, 0.25f, 0.80f, 0.45f, -6.0f },
+    { "Stadion-Jubel",             3, 0.80f, 0.80f, 1.00f, 0.55f, -80.0f },
 };
 constexpr int kNumPresets = (int) (sizeof (kPresets) / sizeof (kPresets[0]));
 }
@@ -37,15 +37,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout TumultProcessor::createLayou
         [] (float v, int) { return String (v, 1) + " dB"; });
     auto ownText = AudioParameterFloatAttributes().withStringFromValueFunction (
         [] (float v, int) { return v <= kOwnMin + 0.05f ? String ("aus") : String (v, 1) + " dB"; });
-    auto tightText = AudioParameterFloatAttributes().withStringFromValueFunction (
+    auto chaosText = AudioParameterFloatAttributes().withStringFromValueFunction (
         [] (float v, int) { const int pct = roundToInt (v * 100.0f);
-                            return pct <= 0 ? u8 ("ungeordnet") : pct >= 100 ? String ("im Gleichschritt") : String (pct) + " %"; });
+                            return pct <= 0 ? u8 ("im Gleichschritt") : pct >= 100 ? String ("totales Chaos") : String (pct) + " %"; });
 
     layout.add (std::make_unique<AudioParameterChoice> (ParameterID { "size", 1 }, u8 ("Gr\xc3\xb6\xc3\x9f" "e"), sizeNames(), 1));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "amount", 1 }, "Menge",
                                                        NormalisableRange<float> (0.0f, 1.0f), 0.7f, percent));
-    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "tight", 1 }, "Synchron",
-                                                       NormalisableRange<float> (0.0f, 1.0f), 0.55f, tightText));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "chaos", 1 }, "Chaos",
+                                                       NormalisableRange<float> (0.0f, 1.0f), 0.45f, chaosText));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "variety", 1 }, "Vielfalt",
                                                        NormalisableRange<float> (0.0f, 1.0f), 0.6f, percent));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "room", 1 }, "Raum",
@@ -65,7 +65,7 @@ TumultProcessor::TumultProcessor()
 {
     pSize = apvts.getRawParameterValue ("size");
     pAmount = apvts.getRawParameterValue ("amount");
-    pTight = apvts.getRawParameterValue ("tight");
+    pChaos = apvts.getRawParameterValue ("chaos");
     pVariety = apvts.getRawParameterValue ("variety");
     pRoom = apvts.getRawParameterValue ("room");
     pOwn = apvts.getRawParameterValue ("own");
@@ -106,7 +106,7 @@ void TumultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     tumult::Params p;
     p.size = juce::roundToInt (tumult::finiteClamp (pSize->load(), 0.0f, (float) (tumult::kNumSizes - 1), 1.0f));
     p.amount = pAmount->load();
-    p.tight = pTight->load();
+    p.chaos = pChaos->load();
     p.variety = pVariety->load();
     p.room = pRoom->load();
     const float own = pOwn->load();
@@ -161,7 +161,7 @@ void TumultProcessor::setCurrentProgram (int i)
     };
     set ("size", (float) pr.size);
     set ("amount", pr.amount);
-    set ("tight", pr.tight);
+    set ("chaos", pr.chaos);
     set ("variety", pr.variety);
     set ("room", pr.room);
     set ("own", pr.ownDb <= -60.0f ? kOwnMin : pr.ownDb);

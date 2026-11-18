@@ -120,7 +120,7 @@ private:
     bool sizeReady = false;   // erst nach dem Wiederherstellen der Groesse Fenstergroesse speichern
     juce::Image logo;
 
-    Knob amount, tight, variety, room, own, output;
+    Knob amount, chaos, variety, room, own, output;
     juce::TextButton sizeButtons[tumult::kNumSizes];
     juce::Label sizeLabel, sizeNote, crowdLabel;
     std::unique_ptr<juce::ParameterAttachment> sizeAttachment;

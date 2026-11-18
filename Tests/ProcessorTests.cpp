@@ -29,8 +29,8 @@ int main()
     CHECK (p->setBusesLayout (layout));
     p->prepareToPlay (48000, 64);
 
-    // Die Latenz wird dem Host gemeldet (200 ms)
-    CHECK (p->getLatencySamples() == 9600);
+    // Die Latenz wird dem Host gemeldet (500 ms)
+    CHECK (p->getLatencySamples() == 24000);
 
     juce::MidiBuffer midi;
 
@@ -117,7 +117,7 @@ int main()
         CHECK (q->getCurrentProgram() == 6);
         CHECK (q->uiTheme.load() == 1);
         CHECK (q->uiWidth.load() == 900);
-        for (auto* id : { "size", "amount", "tight", "variety", "room", "own", "output" })
+        for (auto* id : { "size", "amount", "chaos", "variety", "room", "own", "output" })
             CHECK (q->apvts.getRawParameterValue (id)->load() == p->apvts.getRawParameterValue (id)->load());
         CHECK ((int) q->apvts.getRawParameterValue ("size")->load() == 3);
 

@@ -13,7 +13,8 @@
 //
 // Die Persoenlichkeiten werden NUR in einer Sprechpause neu gewuerfelt (wenn nichts mehr nachklingt). Darum gibt es
 // kein Knacken, und jede Wiederholung des Rufs klingt ein bisschen anders. Die Stimme laeuft mit einem festen Vorlauf
-// von 200 ms (Latenz), damit die Menge auch VOR dem Einsatz der eigenen Stimme einsetzen kann.
+// von 500 ms (Latenz), damit die Menge auch VOR dem Einsatz der eigenen Stimme einsetzen kann. Jede Stimme hat ausserdem
+// ihr eigenes Sprechtempo (bei viel CHAOS laufen manche Leute etwas schneller, andere etwas langsamer).
 //
 // Block-Unabhaengigkeit: Alles wird in festen 16-Sample-Schritten gerechnet, der Zaehler gehoert zur Engine. Ergebnis
 // ist bit-genau gleich, egal wie der Host den Strom in Bloecke teilt (bei gleichen Reglerwerten).
@@ -31,9 +32,10 @@ constexpr float kPi = 3.14159265358979f;
 constexpr int kChunk = 16;               // Steuerwerte und Stimmen-Schritt alle 16 Samples
 constexpr int kMaxVoices = 64;
 constexpr int kNumSizes = 4;             // Klein, Mittel, Gross, Stadion
-constexpr float kLatencySec = 0.200f;    // fester Vorlauf: die Menge darf vor und nach der eigenen Stimme einsetzen
+constexpr float kLatencySec = 0.500f;    // fester Vorlauf: die Menge darf vor und nach der eigenen Stimme einsetzen
 constexpr float kWindowSec = 0.060f;     // Fenster des Tonhoehen-Verschiebers
-constexpr float kHoldSec = 0.430f;       // so lange muss Stille sein, bevor die Menge neu gewuerfelt wird
+constexpr float kSpeedMax = 0.06f;       // groesste Abweichung des Sprechtempos (+-6 %) bei CHAOS 100 %
+constexpr float kAccMaxSec = 0.08f;      // so weit darf eine Stimme durch ihr Tempo hoechstens davonlaufen
 constexpr float kSilenceLevel = 0.0032f; // ca. -50 dBFS (Spitze)
 constexpr int kMinDelay = 40;            // Samples; garantiert, dass nur schon geschriebenes Material gelesen wird
 constexpr float kCrowdCal = 1.85f;       // Eichung: bei MENGE 70 % ist die Menge etwa so laut wie die Eingangsstimme
@@ -69,7 +71,7 @@ struct Rng
 struct SizeCfg
 {
     int voices, front;        // Stimmen insgesamt, davon vorne (deutlich)
-    float spread;             // groesster Einsatz-Versatz (s), bei SYNCHRON 0 %
+    float spread;             // groesster Einsatz-Versatz (s), bei CHAOS 100 %
     float width;              // Breite im Stereobild 0..1
     float backDark;           // Grenzfrequenz der entferntesten Stimmen (Hz)
     float rt60, lenScale, preSec, dampHz;   // Raum
@@ -80,10 +82,10 @@ inline const SizeCfg& sizeCfg (int i)
 {
     static const SizeCfg table[kNumSizes] = {
         // voices front spread width backDark | rt60 len  pre    damp   echo1 g1   echo2 g2
-        {  10,    2,   0.050f, 0.65f, 5500.0f,   0.45f, 0.6f, 0.003f, 6500.0f, 0.0f, 0.0f, 0.0f, 0.0f },   // Klein: Kneipe, Hinterhof
-        {  24,    3,   0.085f, 0.85f, 4200.0f,   0.95f, 1.0f, 0.008f, 5200.0f, 0.0f, 0.0f, 0.0f, 0.0f },   // Mittel: Platz, Saal
-        {  40,    4,   0.120f, 1.00f, 3400.0f,   1.80f, 1.6f, 0.015f, 4200.0f, 0.090f, 0.22f, 0.0f, 0.0f },   // Gross: Halle
-        {  64,    6,   0.150f, 1.00f, 2800.0f,   3.40f, 2.6f, 0.028f, 3200.0f, 0.170f, 0.30f, 0.320f, 0.18f }   // Stadion
+        {  10,    2,   0.100f, 0.65f, 5500.0f,   0.45f, 0.6f, 0.003f, 6500.0f, 0.0f, 0.0f, 0.0f, 0.0f },   // Klein: Kneipe, Hinterhof
+        {  24,    3,   0.180f, 0.85f, 4200.0f,   0.95f, 1.0f, 0.008f, 5200.0f, 0.0f, 0.0f, 0.0f, 0.0f },   // Mittel: Platz, Saal
+        {  40,    4,   0.280f, 1.00f, 3400.0f,   1.80f, 1.6f, 0.015f, 4200.0f, 0.090f, 0.22f, 0.0f, 0.0f },   // Gross: Halle
+        {  64,    6,   0.400f, 1.00f, 2800.0f,   3.40f, 2.6f, 0.028f, 3200.0f, 0.170f, 0.30f, 0.320f, 0.18f }   // Stadion
     };
     return table[std::clamp (i, 0, kNumSizes - 1)];
 }
@@ -92,7 +94,7 @@ struct Params
 {
     int size = 1;            // 0 Klein, 1 Mittel, 2 Gross, 3 Stadion
     float amount = 0.7f;     // MENGE: Lautstaerke der Menge, 0..1
-    float tight = 0.55f;     // SYNCHRON: 0 = ungeordnet, 1 = fast im Gleichschritt
+    float chaos = 0.45f;     // CHAOS: 0 = fast im Gleichschritt, 1 = voellig ungeordnet
     float variety = 0.6f;    // VIELFALT: 0 = klingen alle aehnlich, 1 = Maenner, Frauen, Jugendliche gemischt
     float room = 0.35f;      // RAUM: Anteil des Raums
     float ownDb = -3.0f;     // EIGENE STIMME in dB (-80 = aus)
@@ -103,7 +105,7 @@ inline Params sanitize (Params p)
 {
     p.size = (int) std::lround (finiteClamp ((float) p.size, 0.0f, (float) (kNumSizes - 1), 1.0f));
     p.amount = finiteClamp (p.amount, 0.0f, 1.0f, 0.7f);
-    p.tight = finiteClamp (p.tight, 0.0f, 1.0f, 0.55f);
+    p.chaos = finiteClamp (p.chaos, 0.0f, 1.0f, 0.45f);
     p.variety = finiteClamp (p.variety, 0.0f, 1.0f, 0.6f);
     p.room = finiteClamp (p.room, 0.0f, 1.0f, 0.35f);
     p.ownDb = finiteClamp (p.ownDb, -80.0f, 12.0f, -3.0f);
@@ -254,9 +256,8 @@ public:
         fs = (float) validRate (sampleRate);
         latency = sampleCount (fs, kLatencySec);
         window = (float) sampleCount (fs, kWindowSec);
-        hold = sampleCount (fs, kHoldSec);
         int n = 1;
-        while (n < sampleCount (fs, 0.6f) + 64) n *= 2;
+        while (n < sampleCount (fs, 1.4f) + 64) n *= 2;
         ring.assign ((size_t) n, 0.0f);
         mask = (uint32_t) n - 1u;
         rev.prepare (fs);
@@ -279,7 +280,7 @@ public:
         chunkPos = 0;
         std::fill (std::begin (stageL), std::end (stageL), 0.0f);
         std::fill (std::begin (stageR), std::end (stageR), 0.0f);
-        env = 0.0f; silentRun = hold; rerollDone = false; snap = true; norm = 0.0f; visRef = 0.0f;
+        env = 0.0f; silentRun = 1 << 29; rerollDone = false; snap = true; norm = 0.0f; visRef = 0.0f;
         ownCur = outCur = wetCur = 0.0f; ownInit = false;
         rerolls = 0;
         for (int i = 0; i < kMaxVoices; ++i) { visLevel[i].store (0.0f); visOn[i].store (0.0f); }
@@ -341,9 +342,9 @@ private:
     {
         // Persoenlichkeit (wird nur in der Sprechpause neu gewuerfelt)
         bool participates = true;
-        float jitter = 0, semis = 0, pan = 0, depthU = 0.5f, levelDb = 0, hpHz = 200, peakHz = 1500, peakDb = 0, lpJit = 1;
+        float jitter = 0, speedN = 0, semis = 0, pan = 0, depthU = 0.5f, levelDb = 0, hpHz = 200, peakHz = 1500, peakDb = 0, lpJit = 1;
         // Laufzeit
-        float delay = 0, ratio = 1, gL = 0, gR = 0, phase = 0.5f, driftD = 0, driftG = 0, hpState = 0, hpA = 0.02f, vis = 0;
+        float acc = 0, delay = 0, ratio = 1, gL = 0, gR = 0, phase = 0.5f, driftD = 0, driftG = 0, hpState = 0, hpA = 0.02f, vis = 0;
         int filtSize = -1;
         Biquad lp, pk;
     };
@@ -356,6 +357,8 @@ private:
             auto& q = v[(size_t) i];
             q.participates = i < 6 ? true : rng.uni() < 0.88f;
             q.jitter = std::clamp (rng.gauss() * 0.45f, -1.0f, 1.0f);
+            q.speedN = std::clamp (rng.gauss() * 0.6f, -1.0f, 1.0f);
+            q.acc = 0.0f;
             const float kind = rng.uni();   // Maenner, Frauen, Jugendliche, Sonstige
             const float mean = kind < 0.35f ? -0.5f : kind < 0.75f ? 0.5f : kind < 0.88f ? 1.1f : 0.0f;
             q.semis = std::clamp (mean + rng.gauss() * 0.25f, -1.0f, 1.0f);
@@ -396,16 +399,18 @@ private:
 
     void renderChunk (const Params& p)
     {
-        // Neu wuerfeln nur, wenn nichts mehr nachklingt
+        const auto& c = sizeCfg (p.size);
+        const float spread = c.spread * (0.1f + 0.9f * p.chaos);
+        const float accMax = kAccMaxSec * p.chaos * fs;
+        // Neu wuerfeln nur, wenn nichts mehr nachklingt: der spaeteste Nachzuegler braucht Vorlauf + Streuung + Tempo-Drift + Fenster
+        const int hold = latency + (int) ((spread + kAccMaxSec * p.chaos + kWindowSec + 0.01f) * fs);
         if (silentRun >= hold)
         {
             const bool manual = manualReroll.exchange (false, std::memory_order_acq_rel);
             if (! rerollDone || manual) { reroll(); rerollDone = true; }
         }
 
-        const auto& c = sizeCfg (p.size);
-        const float spread = c.spread * (1.0f - 0.85f * p.tight);
-        const float semisScale = 0.8f + 4.2f * p.variety;
+        const float semisScale = 0.8f + 5.2f * p.variety;
         const float amountGain = p.amount * p.amount * 2.0f * kCrowdCal;
         const uint32_t t0 = wpos;
 
@@ -419,12 +424,14 @@ private:
             active[i] = i < c.voices && q.participates;
             if (q.filtSize != p.size) setupFilters (q, i, c, p.size);
 
+            // Eigenes Sprechtempo: die Stimme laeuft langsam davon (oder hinterher), bis zur Sperre kAccMaxSec
+            q.acc = std::clamp (q.acc + (-q.speedN * kSpeedMax * p.chaos) * (float) kChunk, -accMax, accMax);
             q.driftD += -0.0003f * q.driftD + 0.0127f * rng.bi();
             q.driftG += -0.0003f * q.driftG + 0.0127f * rng.bi();
 
             const float depth = front ? q.depthU * 0.25f : 0.3f + 0.7f * q.depthU;
             const float jitter = q.jitter * spread * (front ? 0.5f : 1.0f);
-            tD[i] = std::max ((float) kMinDelay, (float) latency + (jitter + q.driftD * 0.004f) * fs - 0.5f * window);
+            tD[i] = std::max ((float) kMinDelay, (float) latency + (jitter + q.driftD * 0.004f) * fs + q.acc - 0.5f * window);
             const float semis = q.semis * semisScale * (front ? 0.5f : 1.0f);
             tR[i] = std::fabs (semis) < 0.5f ? 1.0f : std::pow (2.0f, semis / 12.0f);
             const float db = q.levelDb + q.driftG * 1.5f + (front ? 0.0f : -4.0f - 8.0f * depth);
@@ -516,7 +523,7 @@ private:
     }
 
     float fs = 48000.0f, window = 2880.0f;
-    int latency = 9600, hold = 20640;
+    int latency = 24000;
     std::vector<float> ring;
     uint32_t mask = 0, wpos = 0;
     Reverb rev;

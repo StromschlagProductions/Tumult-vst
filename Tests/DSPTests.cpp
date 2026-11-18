@@ -63,10 +63,10 @@ int main()
     NoDenormals denormals;
 
     // 1) Alle Abtastraten und Groessen: endlich, begrenzt, und unabhaengig von der Blockaufteilung (bit-genau)
-    for (double fs : { 22050.0, 44100.0, 48000.0, 96000.0, 192000.0 })
+    for (double fs : { 22050.0, 44100.0, 48000.0, 240000.0, 192000.0 })
         for (int size = 0; size < tumult::kNumSizes; ++size)
         {
-            Params p; p.size = size; p.variety = 1.0f; p.tight = 0.2f; p.room = 0.6f; p.ownDb = 0.0f;
+            Params p; p.size = size; p.variety = 1.0f; p.chaos = 0.8f; p.room = 0.6f; p.ownDb = 0.0f;
             const auto in = chant (fs, (int) (fs * 1.6) + 13);
             std::vector<float> a, b, c, dd;
             render (fs, p, in, 0, a, dd);
@@ -83,7 +83,7 @@ int main()
     {
         const float nan = std::numeric_limits<float>::quiet_NaN(), inf = std::numeric_limits<float>::infinity();
         Params p;
-        p.size = 999; p.amount = nan; p.tight = inf; p.variety = -inf; p.room = nan; p.ownDb = inf; p.outDb = nan;
+        p.size = 999; p.amount = nan; p.chaos = inf; p.variety = -inf; p.room = nan; p.ownDb = inf; p.outDb = nan;
         std::vector<float> l = chant (48000, 48000), r = l;
         tumult::Engine e; e.prepare (48000, 3);
         e.process (l.data(), r.data(), 48000, p);
@@ -95,11 +95,11 @@ int main()
         for (size_t i = 0; i < yl.size(); ++i) CHECK (std::isfinite (yl[i]) && std::isfinite (yr[i]));
         tumult::Engine e2; e2.prepare (std::numeric_limits<double>::quiet_NaN());   // ungueltige Abtastrate -> 48 kHz
         e2.process (l.data(), r.data(), 64, Params());
-        CHECK (e2.latencySamples() == 9600);
+        CHECK (e2.latencySamples() == 24000);
     }
 
     // 3) Latenz: die eigene Stimme kommt exakt kLatencySec spaeter, sonst nichts, und ohne Menge, Raum und Eigenstimme herrscht Stille
-    for (double fs : { 44100.0, 48000.0, 96000.0 })
+    for (double fs : { 44100.0, 48000.0, 240000.0 })
     {
         std::vector<float> in ((size_t) fs, 0.0f);
         in[1000] = 0.5f;
@@ -135,15 +135,15 @@ int main()
     }
 
     // 5) Zeitliche Streuung: eine kurze Rauschsalve wird in der grossen Menge breiter verschmiert als in der kleinen,
-    //    und SYNCHRON zieht sie zusammen
+    //    und weniger CHAOS zieht sie zusammen
     {
         tumult::Rng rg (9);
         const int n = 48000 * 3;
         std::vector<float> in ((size_t) n, 0.0f);
         for (int i = 14400; i < 14400 + 2400; ++i) in[(size_t) i] = 0.3f * rg.bi();
-        auto span = [&] (int size, float tight)
+        auto span = [&] (int size, float chaos)
         {
-            Params p; p.size = size; p.tight = tight; p.ownDb = -80.0f; p.room = 0.0f; p.variety = 0.6f;
+            Params p; p.size = size; p.chaos = chaos; p.ownDb = -80.0f; p.room = 0.0f; p.variety = 0.6f;
             std::vector<float> l, r;
             render (48000, p, in, 480, l, r);
             double tot = 0; for (float x : l) tot += (double) x * x;
@@ -156,9 +156,10 @@ int main()
             }
             return 1000.0 * (b - a) / 48000.0;
         };
-        const double klein = span (0, 0.0f), stadion = span (3, 0.0f), stadionTight = span (3, 1.0f);
-        CHECK (stadion > klein + 40.0);
-        CHECK (stadionTight < stadion - 40.0);
+        const double klein = span (0, 1.0f), stadion = span (3, 1.0f), stadionTight = span (3, 0.0f);
+        CHECK (stadion > klein + 100.0);
+        CHECK (stadion > 200.0);              // im Stadion mit vollem CHAOS ist der Einsatz weit verschmiert
+        CHECK (stadionTight < stadion - 150.0);
     }
 
     // 6) Stereo und Mono-Kompatibilitaet: die Menge ist breit, die Mono-Summe loescht sich nicht aus
@@ -211,7 +212,7 @@ int main()
         e2.process (l.data(), r.data(), n, p);
         CHECK (e2.rerollCount() == 3);
         double d = 0, s = 0;
-        for (size_t i = 0; i < phrase.size(); ++i) { const double x = (double) l[i] - l[i + 96000]; d += x * x; s += (double) l[i] * l[i]; }
+        for (size_t i = 0; i < phrase.size(); ++i) { const double x = (double) l[i] - l[i + 240000]; d += x * x; s += (double) l[i] * l[i]; }
         CHECK (d > 0.5 * s);   // klingt nicht gleich
 
         // "Neue Leute": der Wunsch wird in der naechsten Pause erfuellt
@@ -221,7 +222,7 @@ int main()
         CHECK (e2.rerollCount() == 4);
     }
 
-    // 9) Keine Knackser: ein reiner Ton bleibt ein Ton, auch wenn GROESSE, SYNCHRON und VIELFALT laufend automatisiert werden
+    // 9) Keine Knackser: ein reiner Ton bleibt ein Ton, auch wenn GROESSE, CHAOS und VIELFALT laufend automatisiert werden
     {
         const int n = 48000 * 6;
         std::vector<float> in ((size_t) n);
@@ -236,7 +237,7 @@ int main()
                 if (automate)
                 {
                     const int k = at / 480;
-                    p.size = (k / 40) % 4; p.tight = (float) (k % 200) / 200.0f; p.variety = (float) ((k + 50) % 300) / 300.0f;
+                    p.size = (k / 40) % 4; p.chaos = (float) (k % 200) / 200.0f; p.variety = (float) ((k + 50) % 300) / 300.0f;
                     p.amount = 0.4f + 0.5f * (float) ((k * 7) % 100) / 100.0f;
                 }
                 e.process (l.data() + at, r.data() + at, 480, p);
@@ -260,7 +261,7 @@ int main()
         for (int at = 0; at + 256 <= (int) l.size(); at += 256)
         {
             Params p;
-            p.size = (int) (rg.uni() * 4.0f); p.amount = rg.uni(); p.tight = rg.uni(); p.variety = rg.uni(); p.room = rg.uni();
+            p.size = (int) (rg.uni() * 4.0f); p.amount = rg.uni(); p.chaos = rg.uni(); p.variety = rg.uni(); p.room = rg.uni();
             p.ownDb = -80.0f + 92.0f * rg.uni(); p.outDb = -30.0f + 40.0f * rg.uni();
             NoAllocations guard;
             e.process (l.data() + at, r.data() + at, 256, p);

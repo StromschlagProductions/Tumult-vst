@@ -48,7 +48,7 @@ private:
     std::vector<float> scratchL, scratchR;   // fuer Mono-Spuren (vorab angelegt)
     std::atomic<int> currentProgram { 0 };
     std::atomic<uint32_t> seed { 1 };
-    std::atomic<float>* pSize = nullptr; std::atomic<float>* pAmount = nullptr; std::atomic<float>* pTight = nullptr;
+    std::atomic<float>* pSize = nullptr; std::atomic<float>* pAmount = nullptr; std::atomic<float>* pChaos = nullptr;
     std::atomic<float>* pVariety = nullptr; std::atomic<float>* pRoom = nullptr; std::atomic<float>* pOwn = nullptr;
     std::atomic<float>* pOut = nullptr;
 
