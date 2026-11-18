@@ -10,6 +10,22 @@ namespace tumult
 {
 struct EngineTestAccess
 {
+    static std::array<double, 3> murmurHead (const Engine& e, int level, int side)
+    {
+        const auto& head = e.mp[level][side].a;
+        return { (double) head.take, head.start, head.end };
+    }
+    static float largestGapStep()
+    {
+        Engine::MurmurGap gap; gap.prepare (48000, 7);
+        float previous = 0, largest = 0;
+        for (int i = 0; i < 48000 * 30; ++i)
+        {
+            const float next = gap.tick (48000);
+            largest = std::max (largest, std::abs (next - previous)); previous = next;
+        }
+        return largest;
+    }
     static float largestTempoOffset (const Engine& e)
     {
         float result = 0;
@@ -493,6 +509,57 @@ int main()
         CHECK (std::abs (a[24100] - 0.5f) < 1e-6f);
         CHECK (std::abs (b[24100] + 0.25f) < 1e-6f);
         for (int i = 0; i < 24100; ++i) CHECK (a[(size_t) i] == 0);
+    }
+
+    // 18) Raunen bei 0 % ist leiser und besitzt echte, weiche Pausen; ab 25 % bleibt ein Dauerbett.
+    {
+        const auto bank = testBank();
+        std::vector<float> quietL, quietR, denseL, denseR;
+        auto run = [&] (float intensity, std::vector<float>& a, std::vector<float>& b)
+        {
+            tumult::Engine e; e.prepare (48000, 7); e.setMurmurBank (bank);
+            Params p; p.amount = 0; p.ownDb = -80; p.room = 0; p.walla = 1; p.wallaInt = intensity;
+            a.assign (48000 * 32, 0); b = a;
+            { NoAllocations guard; e.process (a.data(), b.data(), (int) a.size(), p); }
+        };
+        run (0, quietL, quietR); run (0.25f, denseL, denseR);
+        CHECK (rms (quietL, 48000, quietL.size()) < 0.55 * rms (denseL, 48000, denseL.size()));
+        auto emptyWindows = [] (const std::vector<float>& a, const std::vector<float>& b)
+        {
+            int count = 0;
+            for (size_t at = 48000; at + 4800 <= a.size(); at += 4800)
+                if (rms (a, at, at + 4800) < 1e-6 && rms (b, at, at + 4800) < 1e-6) ++count;
+            return count;
+        };
+        CHECK (emptyWindows (quietL, quietR) > 30);
+        CHECK (emptyWindows (denseL, denseR) == 0);
+        CHECK (tumult::EngineTestAccess::largestGapStep() < 0.001f);
+    }
+
+    // 19) Ausschnitte enden variabel; die ersten drei Aufnahmen einer Stufe werden ohne Duplikat besucht.
+    {
+        const auto bank = testBank();
+        tumult::Engine e; e.prepare (48000, 7); e.setMurmurBank (bank);
+        Params p; p.amount = 0; p.ownDb = -80; p.room = 0; p.walla = 1; p.wallaInt = 0;
+        std::vector<float> a (512), b (512);
+        std::array<int, 3> first { -1, -1, -1 };
+        double previous = -1; int count = 0, partial = 0;
+        for (int block = 0; block < 48000 * 32 / 512; ++block)
+        {
+            std::fill (a.begin(), a.end(), 0); b = a;
+            { NoAllocations guard; e.process (a.data(), b.data(), 512, p); }
+            const auto h = tumult::EngineTestAccess::murmurHead (e, 0, 0);
+            if (h[1] != previous)
+            {
+                previous = h[1];
+                if (count < 3) first[(size_t) count] = (int) h[0];
+                ++count;
+                if (h[2] < 12.0 * 24000 - 2400) ++partial;
+            }
+        }
+        CHECK (count >= 3);
+        CHECK (first[0] != first[1] && first[1] != first[2] && first[0] != first[2]);
+        CHECK (partial >= count / 2);
     }
 
     return 0;
