@@ -64,6 +64,9 @@ static juce::AttributedString buildHelp (juce::Colour text, juce::Colour accent,
     head ("VIELFALT");
     body ("Wie unterschiedlich die Leute klingen. Ganz links klingen alle \xc3\xa4hnlich wie eine Gruppe. Weiter rechts mischen sich tiefere und h\xc3\xb6here Lagen (M\xc3\xa4nner, Frauen, Jugendliche, bis etwa f\xc3\xbcnf Halbt\xc3\xb6ne), dazu kommen eigene Klangf\xc3\xa4rbungen.");
 
+    head ("GEMURMEL");
+    body ("Ein Dauerbett aus Gemurmel im Hintergrund, das unter den Rufen eine aufgeregte Menge h\xc3\xb6rbar macht. PEGEL regelt die Lautst\xc3\xa4rke, ganz links ist es aus. INTENSIT\xc3\x84T blendet stufenlos von leisem Raunen \xc3\xbcber Gemurmel und angespannte Stimmung bis zur aufgebrachten Menge. Das Gemurmel wiederholt sich nicht h\xc3\xb6rbar, l\xc3\xa4uft auch ohne Eingang und geht durch denselben Raum wie die Menge. Willst du nur das Gemurmel, stellst du MENGE auf null und schaltest EIGENE STIMME aus.");
+
     head ("RAUM");
     body ("Wieviel Raum die Menge bekommt. Der Raum folgt der GR\xc3\x96SSE: in der Kneipe kurz und nah, im Stadion mit langem Nachhall und einzelnen Echos von den R\xc3\xa4ngen. Er liegt auch auf deiner eigenen Stimme, damit sie in der Menge steht und nicht davor.");
 
@@ -103,6 +106,8 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
     setupKnob (amount, "amount", "MENGE");
     setupKnob (chaos, "chaos", "CHAOS");
     setupKnob (variety, "variety", "VIELFALT");
+    setupKnob (walla, "walla", "PEGEL");
+    setupKnob (wallaInt, "wallaInt", "INTENSIT\xc3\x84T");
     setupKnob (room, "room", "RAUM");
     setupKnob (own, "own", "EIGENE STIMME");
     setupKnob (output, "output", "OUTPUT");
@@ -155,6 +160,8 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
     amount.slider.setTooltip (u8 ("Lautst\xc3\xa4rke der Menge. Bei etwa 70 % ist sie ungef\xc3\xa4hr so laut wie deine eingesprochene Stimme."));
     chaos.slider.setTooltip (u8 ("Wie ungeordnet die Menge ruft: links im Gleichschritt wie ein Sprechchor, rechts mit weit gestreutem Einsatz und unterschiedlichem Sprechtempo."));
     variety.slider.setTooltip (u8 ("Wie unterschiedlich die Leute klingen: links eine \xc3\xa4hnliche Gruppe, rechts M\xc3\xa4nner, Frauen und Jugendliche gemischt."));
+    walla.slider.setTooltip (u8 ("Lautst\xc3\xa4rke des Gemurmels im Hintergrund. Ganz links aus. Das Gemurmel l\xc3\xa4uft dauernd unter den Rufen und geht durch denselben Raum. Es geht auch allein: MENGE auf null und EIGENE STIMME aus."));
+    wallaInt.slider.setTooltip (u8 ("Wie aufgeregt das Gemurmel ist: links leises Raunen, in der Mitte angespannt, rechts eine aufgebrachte Menge. Die Stufen blenden stufenlos ineinander."));
     room.slider.setTooltip (u8 ("Wieviel Raum die Menge bekommt. Der Raum folgt der GR\xc3\x96SSE (Kneipe bis Stadion mit Echo von den R\xc3\xa4ngen)."));
     own.slider.setTooltip (u8 ("Dein eingesprochenes Original (mit 500 ms Vorlauf). Ganz links aus: dann ruft nur die Menge."));
     output.slider.setTooltip (u8 ("Gesamtpegel am Ausgang."));
@@ -299,11 +306,12 @@ void TumultEditor::paint (juce::Graphics& g)
     g.fillRect (264.0f, 88.0f, 1.0f, 126.0f);
     g.fillRect (416.0f, 88.0f, 1.0f, 126.0f);
 
-    // Untere Kaesten: CHOR | RAUM | MIX
+    // Untere Kaesten: CHOR | GEMURMEL | RAUM | MIX
     struct Box { float x, w; const char* title; const char* note; };
-    const Box boxes[] = { { 12.0f, 224.0f, "CHOR", "wie die Menge ruft" },
-                          { 244.0f, 140.0f, "RAUM", "" },
-                          { 392.0f, (float) W - 404.0f, "MIX", "" } };
+    const Box boxes[] = { { 12.0f, 220.0f, "CHOR", "wie die Menge ruft" },
+                          { 240.0f, 220.0f, "GEMURMEL", "Hintergrund" },
+                          { 468.0f, 124.0f, "RAUM", "" },
+                          { 600.0f, (float) W - 612.0f, "MIX", "" } };
     for (const auto& b : boxes)
     {
         g.setColour (theme.panel);
@@ -348,8 +356,8 @@ void TumultEditor::resized()
     amount.slider.setBounds (278, 104, 124, 118);
 
     crowdLabel.setBounds (432, 84, 224, 18);
-    display.setBounds (432, 104, 224, 82);
-    rerollButton.setBounds (432, 192, 224, 26);
+    display.setBounds (432, 104, w - 24 - 420, 82);
+    rerollButton.setBounds (432, 192, w - 24 - 420, 26);
 
     auto placeKnob = [] (Knob& k, int x, int y, int cw)
     {
@@ -357,12 +365,15 @@ void TumultEditor::resized()
         k.slider.setBounds (x + 10, y + 20, cw - 20, 118);
     };
     // CHOR: CHAOS, VIELFALT
-    placeKnob (chaos, 16, 264, 108);
-    placeKnob (variety, 124, 264, 108);
+    placeKnob (chaos, 14, 264, 108);
+    placeKnob (variety, 122, 264, 108);
+    // GEMURMEL: PEGEL, INTENSITAET
+    placeKnob (walla, 242, 264, 108);
+    placeKnob (wallaInt, 350, 264, 108);
     // RAUM
-    placeKnob (room, 248, 264, 132);
+    placeKnob (room, 476, 264, 108);
     // MIX: EIGENE STIMME, OUTPUT
-    placeKnob (own, 396, 264, 134);
-    placeKnob (output, 530, 264, w - 12 - 6 - 530);
+    placeKnob (own, 600, 264, 104);
+    placeKnob (output, 704, 264, 104);
     helpScroll.toFront (false);
 }

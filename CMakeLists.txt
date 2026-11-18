@@ -35,7 +35,8 @@ else()
     FetchContent_MakeAvailable(JUCE)
 endif()
 
-juce_add_binary_data(TumultAssets SOURCES Assets/logo.png)
+file(GLOB TUMULT_MURMUR_FILES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Assets/murmur/*.ogg)
+juce_add_binary_data(TumultAssets SOURCES Assets/logo.png ${TUMULT_MURMUR_FILES})
 
 # Effekt mit Stereo-Ein-/Ausgang, ohne MIDI: aus der Eingangsstimme wird die Menge, der Eingang wird ersetzt
 juce_add_plugin(Tumult

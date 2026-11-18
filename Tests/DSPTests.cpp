@@ -2,6 +2,7 @@
 #include "TumultDSP.h"
 #include "TestSupport.h"
 #include <limits>
+#include <memory>
 #include <vector>
 
 using tumult::Params;
@@ -56,6 +57,29 @@ static void render (double fs, const Params& p, const std::vector<float>& in, in
         NoAllocations guard;
         e.process (l.data() + at, r.data() + at, m, p);
     }
+}
+
+// Eine Test-Bank fuer das Gemurmel: fuenf Stufen mit unterschiedlicher Helligkeit, je mehrere kurze Aufnahmen (mono, 24 kHz)
+static std::shared_ptr<const tumult::MurmurBank> testBank (int seconds = 12)
+{
+    auto b = std::make_shared<tumult::MurmurBank>();
+    tumult::Rng rg (99);
+    for (int lv = 0; lv < tumult::kNumMurmurLevels; ++lv)
+        for (int t = 0; t < (lv == 2 ? 1 : 3); ++t)
+        {
+            std::vector<int16_t> y ((size_t) (seconds * 24000));
+            const float a = 0.05f + 0.17f * (float) lv;   // je hoeher die Stufe, desto heller
+            float lp = 0.0f;
+            for (auto& x : y) { lp += a * (rg.bi() - lp); x = (int16_t) std::clamp (lp * 9000.0f / std::sqrt (a), -32000.0f, 32000.0f); }
+            b->level[lv].push_back (std::move (y));
+        }
+    return b;
+}
+static double highShare (const std::vector<float>& x)   // Anteil der Differenz (hohe Frequenzen) an der Leistung
+{
+    double d = 0, e = 0;
+    for (size_t i = 1; i < x.size(); ++i) { const double v = (double) x[i] - x[i - 1]; d += v * v; e += (double) x[i] * x[i]; }
+    return d / (e + 1e-30);
 }
 
 int main()
@@ -287,6 +311,98 @@ int main()
                 if (e.voiceOn (i) > 0.5f) ++on;
             }
             CHECK (on <= expected[size] && on >= (int) (0.7f * (float) expected[size]));
+        }
+    }
+
+    // 12) Gemurmel: Bett aus den Aufnahmen, deterministisch, ohne Knackser, laeuft auch ohne Eingang
+    {
+        const auto bank = testBank();
+        auto run = [&] (double fs, Params p, int block, int seconds, std::vector<float>& l, std::vector<float>& r, bool withBank = true)
+        {
+            tumult::Engine e; e.prepare (fs, 5);
+            if (withBank) e.setMurmurBank (bank);
+            l.assign ((size_t) (fs * seconds), 0.0f); r = l;
+            for (size_t at = 0; at < l.size(); at += (size_t) block)
+            {
+                const int m = (int) std::min ((size_t) block, l.size() - at);
+                NoAllocations guard;
+                e.process (l.data() + at, r.data() + at, m, p);
+            }
+        };
+        std::vector<float> l, r, l0, r0;
+        Params p; p.walla = 0.7f; p.wallaInt = 0.5f; p.ownDb = -80.0f; p.amount = 0.0f; p.room = 0.0f;
+
+        // a) GEMURMEL aus: genau so, als gaebe es keine Aufnahmen
+        Params off = p; off.walla = 0.0f;
+        run (48000, off, 480, 3, l, r);
+        run (48000, off, 480, 3, l0, r0, false);
+        CHECK (l == l0 && r == r0);
+
+        // b) GEMURMEL an, ohne Eingang: es kommt Pegel, links und rechts sind unabhaengig
+        run (48000, p, 480, 12, l, r);
+        const double lev = db (rms (l, 48000, l.size()));
+        CHECK (lev > -40.0 && lev < -10.0);
+        double lr = 0, ll = 0, rr = 0;
+        for (size_t i = 48000; i < l.size(); ++i) { lr += (double) l[i] * r[i]; ll += (double) l[i] * l[i]; rr += (double) r[i] * r[i]; }
+        CHECK (std::abs (lr / std::sqrt (ll * rr)) < 0.3);
+        for (size_t i = 0; i < l.size(); ++i) CHECK (std::isfinite (l[i]) && std::abs (l[i]) < 1.0f);
+
+        // c) Pegel folgt dem Regler (quadratisch): 50 % weniger Regler = rund 12 dB leiser
+        Params half = p; half.walla = 0.35f;
+        std::vector<float> hl, hr;
+        run (48000, half, 480, 12, hl, hr);
+        const double diff = db (rms (l, 48000, l.size())) - db (rms (hl, 48000, hl.size()));
+        CHECK (diff > 10.0 && diff < 14.0);
+
+        // d) INTENSITAET: je hoeher, desto heller (die Stufen unterscheiden sich hoerbar)
+        double prev = -1.0;
+        for (float x : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f })
+        {
+            Params q = p; q.wallaInt = x;
+            std::vector<float> a, b;
+            run (48000, q, 480, 12, a, b);
+            const double h = highShare (a);
+            CHECK (h > prev);
+            prev = h;
+        }
+
+        // e) Blockgroesse egal: bit-genau gleich, auch bei sich aendernden Reglern
+        std::vector<float> a1, b1, a2, b2;
+        run (48000, p, 64, 6, a1, b1);
+        run (48000, p, 1000, 6, a2, b2);
+        CHECK (a1 == a2 && b1 == b2);
+
+        // f) lange Laufzeit ueber mehrere Aufnahmen und Ueberblendungen: nie ein Knackser (grosse Spruenge von Sample zu Sample)
+        run (48000, p, 480, 40, l, r);
+        double maxStep = 0, sd = 0;
+        for (size_t i = 1; i < l.size(); ++i) { maxStep = std::max (maxStep, (double) std::abs (l[i] - l[i - 1])); sd += (double) l[i] * l[i]; }
+        sd = std::sqrt (sd / (double) l.size());
+        CHECK (maxStep < 8.0 * sd);
+
+        // g) alle Abtastraten, Regler laufend automatisiert (auch ungueltige Werte): endlich und begrenzt
+        for (double fs : { 22050.0, 44100.0, 48000.0, 96000.0, 192000.0 })
+        {
+            tumult::Engine e; e.prepare (fs, 3); e.setMurmurBank (bank);
+            tumult::Rng rg (11);
+            std::vector<float> a ((size_t) (fs * 6), 0.0f), b = a;
+            for (size_t at = 0; at < a.size(); at += 256)
+            {
+                Params q; q.size = (int) (rg.uni() * 4.0f); q.walla = rg.uni(); q.wallaInt = rg.uni(); q.room = rg.uni(); q.amount = rg.uni();
+                if (at == 256 * 7) { q.walla = std::numeric_limits<float>::quiet_NaN(); q.wallaInt = std::numeric_limits<float>::infinity(); }
+                const int m = (int) std::min ((size_t) 256, a.size() - at);
+                NoAllocations guard;
+                e.process (a.data() + at, b.data() + at, m, q);
+            }
+            for (size_t i = 0; i < a.size(); ++i) CHECK (std::isfinite (a[i]) && std::isfinite (b[i]) && std::abs (a[i]) <= 1.05f);
+        }
+
+        // h) eine unbrauchbare Bank wird ignoriert, nichts bricht ab
+        {
+            tumult::Engine e; e.prepare (48000, 1);
+            e.setMurmurBank (std::make_shared<tumult::MurmurBank>());
+            std::vector<float> a (4800, 0.0f), b = a;
+            e.process (a.data(), b.data(), 4800, p);
+            for (float x : a) CHECK (x == 0.0f);
         }
     }
 

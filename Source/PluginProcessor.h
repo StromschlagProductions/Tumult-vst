@@ -39,7 +39,7 @@ public:
     const tumult::Engine& crowd() const { return engine; }
 
     juce::AudioProcessorValueTreeState apvts;
-    std::atomic<int> uiTheme { 0 }, uiWidth { 680 }, uiHeight { 420 };
+    std::atomic<int> uiTheme { 0 }, uiWidth { 820 }, uiHeight { 420 };
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
@@ -50,7 +50,7 @@ private:
     std::atomic<uint32_t> seed { 1 };
     std::atomic<float>* pSize = nullptr; std::atomic<float>* pAmount = nullptr; std::atomic<float>* pChaos = nullptr;
     std::atomic<float>* pVariety = nullptr; std::atomic<float>* pRoom = nullptr; std::atomic<float>* pOwn = nullptr;
-    std::atomic<float>* pOut = nullptr;
+    std::atomic<float>* pOut = nullptr; std::atomic<float>* pWalla = nullptr; std::atomic<float>* pWallaInt = nullptr;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TumultProcessor)
 };

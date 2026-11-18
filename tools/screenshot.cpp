@@ -47,11 +47,11 @@ private:
             auto xml = juce::AudioProcessor::getXmlFromBinary (state.getData(), (int) state.getSize());
             if (! xml) { fail ("Invalid processor state"); return; }
             xml->setAttribute ("theme", index);
-            xml->setAttribute ("uiW", 680); xml->setAttribute ("uiH", 420);
+            xml->setAttribute ("uiW", 820); xml->setAttribute ("uiH", 420);
             juce::AudioProcessor::copyXmlToBinary (*xml, state);
             processor.setStateInformation (state.getData(), (int) state.getSize());
             editor.reset (processor.createEditor());
-            editor->setSize (680, 420); editor->setVisible (true);
+            editor->setSize (820, 420); editor->setVisible (true);
             return; // allow attachments/timers to settle on the actual message loop
         }
         auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 2.0f);

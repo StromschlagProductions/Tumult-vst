@@ -110,17 +110,17 @@ private:
     static Theme darkTheme();
     static Theme lightTheme();
 
-    static constexpr int kBaseW = 680, kBaseH = 420;
+    static constexpr int kBaseW = 820, kBaseH = 420;
 
     TumultProcessor& processor;
     juce::LookAndFeel_V4 look;
-    juce::Component content;      // feste 680x420-Flaeche, wird skaliert
+    juce::Component content;      // feste 820x420-Flaeche, wird skaliert
     float uiScale = 1.0f;
     Theme theme;
     bool sizeReady = false;   // erst nach dem Wiederherstellen der Groesse Fenstergroesse speichern
     juce::Image logo;
 
-    Knob amount, chaos, variety, room, own, output;
+    Knob amount, chaos, variety, walla, wallaInt, room, own, output;
     juce::TextButton sizeButtons[tumult::kNumSizes];
     juce::Label sizeLabel, sizeNote, crowdLabel;
     std::unique_ptr<juce::ParameterAttachment> sizeAttachment;

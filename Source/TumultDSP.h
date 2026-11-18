@@ -1,4 +1,4 @@
-// TumultDSP.h - Klang-Engine fuer "Tumult" (Stromschlag Audio), Teil 1: der Stimmvervielfacher
+// TumultDSP.h - Klang-Engine fuer "Tumult" (Stromschlag Audio): Teil 1 der Stimmvervielfacher, Teil 2 das Gemurmel
 // Reines C++ ohne JUCE, damit die Engine unabhaengig vom Plugin getestet und zu Hoerbeispielen gerendert werden kann.
 //
 // Aus EINER aufgenommenen Stimme wird eine Menschenmenge, die denselben Text ruft (zum Beispiel einen Sprechchor).
@@ -16,6 +16,11 @@
 // von 500 ms (Latenz), damit die Menge auch VOR dem Einsatz der eigenen Stimme einsetzen kann. Jede Stimme hat ausserdem
 // ihr eigenes Sprechtempo (bei viel CHAOS laufen manche Leute etwas schneller, andere etwas langsamer).
 //
+// Teil 2, GEMURMEL: ein Dauerbett aus Gemurmel in fuenf Stufen (leises Raunen ... aufgebrachte Menge). INTENSITAET blendet
+// stufenlos zwischen den Stufen. Jede Stufe besteht aus mehreren Aufnahmen; links und rechts laufen unabhaengige Spieler, die
+// in zufaelliger Reihenfolge und an zufaelligen Stellen weiterlaufen und weich ineinander ueberblenden, so dass sich nichts
+// hoerbar wiederholt. Das Bett geht durch denselben Raum wie die Menge.
+//
 // Block-Unabhaengigkeit: Alles wird in festen 16-Sample-Schritten gerechnet, der Zaehler gehoert zur Engine. Ergebnis
 // ist bit-genau gleich, egal wie der Host den Strom in Bloecke teilt (bei gleichen Reglerwerten).
 #pragma once
@@ -24,6 +29,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace tumult
@@ -31,6 +37,9 @@ namespace tumult
 constexpr float kPi = 3.14159265358979f;
 constexpr int kChunk = 16;               // Steuerwerte und Stimmen-Schritt alle 16 Samples
 constexpr int kMaxVoices = 64;
+constexpr int kNumMurmurLevels = 5;     // Raunen, Gemurmel, angespannt, aufgebracht, kurz vor dem Ruf
+constexpr float kMurmurXfadeSec = 3.0f;  // Ueberblendzeit zwischen zwei Aufnahmen
+constexpr float kMurmurCal = 1.0f;       // Eichung des Gemurmels bei GEMURMEL 100 %
 constexpr int kNumSizes = 4;             // Klein, Mittel, Gross, Stadion
 constexpr float kLatencySec = 0.500f;    // fester Vorlauf: die Menge darf vor und nach der eigenen Stimme einsetzen
 constexpr float kWindowSec = 0.060f;     // Fenster des Tonhoehen-Verschiebers
@@ -97,6 +106,8 @@ struct Params
     float chaos = 0.45f;     // CHAOS: 0 = fast im Gleichschritt, 1 = voellig ungeordnet
     float variety = 0.6f;    // VIELFALT: 0 = klingen alle aehnlich, 1 = Maenner, Frauen, Jugendliche gemischt
     float room = 0.35f;      // RAUM: Anteil des Raums
+    float walla = 0.0f;      // GEMURMEL: Pegel des Gemurmel-Betts, 0 = aus
+    float wallaInt = 0.5f;   // INTENSITAET: 0 = leises Raunen ... 1 = aufgebrachte Menge
     float ownDb = -3.0f;     // EIGENE STIMME in dB (-80 = aus)
     float outDb = 0.0f;      // OUTPUT in dB
 };
@@ -108,6 +119,8 @@ inline Params sanitize (Params p)
     p.chaos = finiteClamp (p.chaos, 0.0f, 1.0f, 0.45f);
     p.variety = finiteClamp (p.variety, 0.0f, 1.0f, 0.6f);
     p.room = finiteClamp (p.room, 0.0f, 1.0f, 0.35f);
+    p.walla = finiteClamp (p.walla, 0.0f, 1.0f, 0.0f);
+    p.wallaInt = finiteClamp (p.wallaInt, 0.0f, 1.0f, 0.5f);
     p.ownDb = finiteClamp (p.ownDb, -80.0f, 12.0f, -3.0f);
     p.outDb = finiteClamp (p.outDb, -60.0f, 24.0f, 0.0f);
     return p;
@@ -244,6 +257,21 @@ private:
 };
 
 //==============================================================================
+// Die Gemurmel-Aufnahmen (mono, int16): fuenf Stufen mit je mehreren Aufnahmen. Wird vom Plugin einmal geladen und von allen
+// Instanzen geteilt; die Engine veraendert sie nie.
+struct MurmurBank
+{
+    double rate = 24000.0;
+    std::vector<std::vector<int16_t>> level[kNumMurmurLevels];
+    bool usable() const
+    {
+        if (! (rate >= 8000.0 && rate <= 96000.0)) return false;
+        for (const auto& l : level) { if (l.empty()) return false; for (const auto& t : l) if (t.size() < 64) return false; }
+        return true;
+    }
+};
+
+//==============================================================================
 class Engine
 {
 public:
@@ -264,10 +292,18 @@ public:
         aGain = 1.0f - std::exp (-(float) kChunk / (0.04f * fs));
         aDelay = 1.0f - std::exp (-(float) kChunk / (0.25f * fs));
         aRatio = 1.0f - std::exp (-(float) kChunk / (0.12f * fs));
+        aMix = 1.0f - std::exp (-(float) kChunk / (0.30f * fs));
         envRelease = std::exp (-1.0f / (0.03f * fs));
         settleRate = 1.0f / (0.3f * fs);
         baseSeed = seed ? seed : 1u;
         reset();
+    }
+
+    // Gemurmel-Aufnahmen setzen (nicht im Audio-Thread aufrufen); ohne Bank bleibt das Gemurmel stumm
+    void setMurmurBank (std::shared_ptr<const MurmurBank> b)
+    {
+        bank = (b && b->usable()) ? std::move (b) : nullptr;
+        initMurmur();
     }
 
     void reset()
@@ -283,6 +319,7 @@ public:
         env = 0.0f; silentRun = 1 << 29; rerollDone = false; snap = true; norm = 0.0f; visRef = 0.0f;
         ownCur = outCur = wetCur = 0.0f; ownInit = false;
         rerolls = 0;
+        initMurmur();
         for (int i = 0; i < kMaxVoices; ++i) { visLevel[i].store (0.0f); visOn[i].store (0.0f); }
     }
 
@@ -505,6 +542,7 @@ private:
             q.vis = std::max (q.vis * 0.995f, peak * (q.gL + q.gR));   // Huellkurve mit ca. 70 ms Abklingzeit
         }
         snap = false;
+        renderMurmur (p);
 
         // Anzeige: Helligkeit relativ zur lautesten Stimme der letzten Sekunden (unabhaengig von MENGE und Eingangspegel)
         float loudest = 0.0f;
@@ -521,6 +559,131 @@ private:
         visOn[i].store (on && i < c.voices ? 1.0f : 0.0f, std::memory_order_relaxed);
         visLevel[i].store (std::min (1.0f, q.vis / (visRef + 1e-6f)), std::memory_order_relaxed);
     }
+
+    //==========================================================================
+    // Gemurmel
+    struct MHead { int take = 0; double pos = 0.0; };
+    struct MPlayer { MHead a, b; bool fading = false; float t = 0.0f; };
+
+    float readTake (const std::vector<int16_t>& y, double pos) const
+    {
+        const int n = (int) y.size();
+        const int i = (int) pos;
+        const float f = (float) (pos - (double) i);
+        auto at = [&] (int k) { return (float) y[(size_t) std::clamp (k, 0, n - 1)] * (1.0f / 32768.0f); };
+        const float ym1 = at (i - 1), y0 = at (i), y1 = at (i + 1), y2 = at (i + 2);
+        const float c1 = 0.5f * (y1 - ym1);
+        const float c2 = ym1 - 2.5f * y0 + 2.0f * y1 - 0.5f * y2;
+        const float c3 = 0.5f * (y2 - ym1) + 1.5f * (y0 - y1);
+        return ((c3 * f + c2) * f + c1) * f + y0;
+    }
+
+    double randomStart (const std::vector<int16_t>& take)
+    {
+        const double room = std::max (0.0, (double) take.size() - 3.0 * mXf);
+        return (double) mrng.uni() * room;
+    }
+
+    void initMurmur()
+    {
+        mrng = Rng (baseSeed * 2654435761u + 12345u);
+        mInit = false;
+        for (auto& w : mW) w = 0.0f;
+        mG = 0.0f;
+        if (! bank) return;
+        mStep = bank->rate / (double) fs;
+        size_t minLen = ~(size_t) 0;
+        for (const auto& l : bank->level) for (const auto& t : l) minLen = std::min (minLen, t.size());
+        mXf = std::min (kMurmurXfadeSec * bank->rate, (double) minLen * 0.25);
+        mXfInc = (float) (mStep / mXf);
+        for (int lv = 0; lv < kNumMurmurLevels; ++lv)
+            for (int s = 0; s < 2; ++s)
+            {
+                auto& pl = mp[lv][s];
+                const auto& takes = bank->level[lv];
+                pl = MPlayer();
+                pl.a.take = (int) (mrng.uni() * (float) takes.size()) % (int) takes.size();
+                pl.a.pos = randomStart (takes[(size_t) pl.a.take]);
+            }
+    }
+
+    float tickPlayer (int lv, MPlayer& pl)
+    {
+        const auto& takes = bank->level[lv];
+        const auto& ta = takes[(size_t) pl.a.take];
+        const float ya = readTake (ta, pl.a.pos);
+        pl.a.pos += mStep;
+        if (pl.fading)
+        {
+            const float yb = readTake (takes[(size_t) pl.b.take], pl.b.pos);
+            pl.b.pos += mStep;
+            pl.t += mXfInc;
+            if (pl.t >= 1.0f) { pl.a = pl.b; pl.fading = false; return yb; }
+            const float sm = pl.t * pl.t * (3.0f - 2.0f * pl.t);
+            return ya * std::sqrt (1.0f - sm) + yb * std::sqrt (sm);   // unabhaengige Aufnahmen: gleiche Leistung
+        }
+        if (pl.a.pos > (double) ta.size() - mXf)
+        {
+            const int n = (int) takes.size();
+            int idx = pl.a.take;
+            if (n > 1) { const int r = (int) (mrng.uni() * (float) (n - 1)) % (n - 1); idx = r >= pl.a.take ? r + 1 : r; }
+            pl.b.take = idx;
+            pl.b.pos = randomStart (takes[(size_t) idx]);
+            pl.t = 0.0f;
+            pl.fading = true;
+        }
+        return ya;
+    }
+
+    // Rechnet kChunk Samples Gemurmel und legt sie auf stageL/stageR (dann geht es mit durch den Raum)
+    void renderMurmur (const Params& p)
+    {
+        if (! bank) return;
+        const float x4 = p.wallaInt * (float) (kNumMurmurLevels - 1);
+        const int lo = std::min ((int) x4, kNumMurmurLevels - 2);
+        const float fr = x4 - (float) lo;
+        float wT[kNumMurmurLevels] = {};
+        wT[lo] = std::cos (fr * kPi * 0.5f);
+        wT[lo + 1] = std::sin (fr * kPi * 0.5f);
+        const float tilt = dbToLin (3.0f * p.wallaInt);   // je aufgebrachter, desto etwas lauter
+        const float gT = p.walla * p.walla * kMurmurCal * tilt;
+        if (! mInit) { for (int i = 0; i < kNumMurmurLevels; ++i) mW[i] = wT[i]; mG = gT; mInit = true; }
+        if (gT < 1e-6f && mG < 1e-6f) { mG = 0.0f; return; }
+
+        float w0[kNumMurmurLevels], dw[kNumMurmurLevels];
+        for (int i = 0; i < kNumMurmurLevels; ++i)
+        {
+            w0[i] = mW[i];
+            mW[i] += aMix * (wT[i] - mW[i]);
+            dw[i] = (mW[i] - w0[i]) * (1.0f / (float) kChunk);
+        }
+        const float g0 = mG;
+        mG += aGain * (gT - mG);
+        const float dg = (mG - g0) * (1.0f / (float) kChunk);
+        int act[kNumMurmurLevels], na = 0;
+        for (int i = 0; i < kNumMurmurLevels; ++i) if (w0[i] > 1e-5f || mW[i] > 1e-5f) act[na++] = i;
+        for (int k = 0; k < kChunk; ++k)
+        {
+            const float g = g0 + dg * (float) k;
+            float l = 0.0f, r = 0.0f;
+            for (int j = 0; j < na; ++j)
+            {
+                const int lv = act[j];
+                const float w = (w0[lv] + dw[lv] * (float) k) * g;
+                l += w * tickPlayer (lv, mp[lv][0]);
+                r += w * tickPlayer (lv, mp[lv][1]);
+            }
+            stageL[k] += l;
+            stageR[k] += r;
+        }
+    }
+
+    std::shared_ptr<const MurmurBank> bank;
+    MPlayer mp[kNumMurmurLevels][2];
+    Rng mrng { 7 };
+    double mStep = 0.5, mXf = 72000.0;
+    float mXfInc = 1e-5f, mW[kNumMurmurLevels] = {}, mG = 0.0f, aMix = 0.001f;
+    bool mInit = false;
 
     float fs = 48000.0f, window = 2880.0f;
     int latency = 24000;

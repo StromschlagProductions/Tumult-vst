@@ -57,6 +57,43 @@ int main()
         CHECK (energy > 0.0);
     }
 
+    // Gemurmel: die eingebetteten Aufnahmen werden geladen; ohne Eingang kommt hoerbares, endliches Material auf beiden Seiten
+    {
+        auto setParam = [&] (const char* id, float v)
+        {
+            auto* prm = p->apvts.getParameter (id);
+            CHECK (prm != nullptr);
+            prm->setValueNotifyingHost (prm->convertTo0to1 (v));
+        };
+        setParam ("amount", 0.0f); setParam ("own", -60.0f); setParam ("room", 0.0f); setParam ("walla", 0.7f);
+        double lowE = 0, highE = 0;
+        for (float x : { 0.0f, 1.0f })
+        {
+            setParam ("wallaInt", x);
+            p->reset();
+            juce::AudioBuffer<float> b (2, 4800);
+            double e = 0, d = 0, l = 0, r = 0;
+            for (int round = 0; round < 40; ++round)
+            {
+                b.clear();
+                { NoAllocations guard; p->processBlock (b, midi); }
+                if (round >= 10)
+                    for (int i = 1; i < 4800; ++i)
+                    {
+                        const float a2 = b.getSample (0, i), c2 = b.getSample (1, i);
+                        CHECK (std::isfinite (a2) && std::isfinite (c2));
+                        e += (double) a2 * a2; l += (double) a2 * a2; r += (double) c2 * c2;
+                        const double dd = a2 - b.getSample (0, i - 1); d += dd * dd;
+                    }
+            }
+            CHECK (l > 1e-3 && r > 1e-3);
+            (x == 0.0f ? lowE : highE) = d / e;   // Anteil hoher Frequenzen
+        }
+        CHECK (highE > lowE);   // die obere Stufe klingt heller als die untere
+        setParam ("walla", 0.0f); setParam ("amount", 0.7f); setParam ("own", -3.0f); setParam ("room", 0.35f);
+        p->reset();
+    }
+
     // Eigene Stimme, Menge und Raum aus: es bleibt Stille
     {
         for (auto* id : { "amount", "room" })
@@ -117,7 +154,7 @@ int main()
         CHECK (q->getCurrentProgram() == 6);
         CHECK (q->uiTheme.load() == 1);
         CHECK (q->uiWidth.load() == 900);
-        for (auto* id : { "size", "amount", "chaos", "variety", "room", "own", "output" })
+        for (auto* id : { "size", "amount", "chaos", "variety", "walla", "wallaInt", "room", "own", "output" })
             CHECK (q->apvts.getRawParameterValue (id)->load() == p->apvts.getRawParameterValue (id)->load());
         CHECK ((int) q->apvts.getRawParameterValue ("size")->load() == 3);
 
@@ -145,7 +182,7 @@ int main()
             p->uiTheme.store (theme);
             std::unique_ptr<juce::AudioProcessorEditor> editor (p->createEditor());
             CHECK (editor != nullptr);
-            editor->setSize (680, 420);
+            editor->setSize (820, 420);
         }
     }
 

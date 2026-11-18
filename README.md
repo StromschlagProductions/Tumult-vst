@@ -8,6 +8,7 @@
 VST3-Effekt für Hörspiel-Produktion. TUMULT macht aus **einer einzigen** eingesprochenen Stimme eine Menschenmenge, die denselben
 Text ruft, zum Beispiel einen Protest-Sprechchor. Du sprichst „Wir wollen keine Mauer!“ einmal ein, wählst Klein, Mittel, Groß
 oder Stadion und hörst eine Menge, in der jeder ein bisschen früher oder später, höher oder tiefer, näher oder weiter weg ruft.
+Darunter kann ein Gemurmel laufen, von leisem Raunen bis zur aufgebrachten Menge, das die Rufe in eine lebendige Szene einbettet.
 
 **⬇ Download (Windows · VST3 · Stereo):** https://github.com/StromschlagProductions/Tumult-vst/releases/latest
 
@@ -20,7 +21,7 @@ Menge, die ich mit wenigen Griffen einstellen kann und bei der ich beim Hören n
 stehen.
 
 TUMULT löst das mit einer Menge aus vielen einzelnen Stimmen, die ich auf der Spur mit meinem Ruf einsetze. Jede Stimme hat
-einen eigenen Einsatz, eine eigene Tonlage und Klangfarbe und einen eigenen Platz im Raum. Es gibt vier Größen und nur wenige
+einen eigenen Einsatz, eine eigene Tonlage und Klangfarbe und einen eigenen Platz im Raum. Dazu kommt ein Gemurmel im Hintergrund, dessen Aufregung sich stufenlos einstellen lässt. Es gibt vier Größen und nur wenige
 Regler. Die Anzeige zeigt die Menge von oben, jeder Punkt ist eine Stimme.
 
 TUMULT ist ein Werkzeug für meinen eigenen Alltag in der Hörspielproduktion, entstanden aus dem, was ich in solchen Szenen
@@ -60,6 +61,8 @@ verkleinern. Das Seitenverhältnis bleibt dabei fest.
 - **Fester Vorlauf von 500 ms:** TUMULT meldet ihn dem Host, der ihn ausgleicht. Dadurch darf ein Teil der Menge auch **vor** dem
   Einsatz deiner Stimme beginnen, so wie es in einer echten Menge ist, in der ein paar Leute früher anfangen. Mit CHAOS verteilt sich der Einsatz weit: manche rufen deutlich vor dir, andere erst eine Weile danach. Jeder hat außerdem sein eigenes Sprechtempo, einer etwas schneller, ein anderer etwas langsamer.
 
+- **Gemurmel im Hintergrund:** Unter den Rufen läuft ein Dauerbett aus Gemurmel in fünf Stufen (Raunen, Gemurmel, angespannt, aufgebracht, Tumult). INTENSITÄT blendet stufenlos zwischen den Stufen, PEGEL regelt die Lautstärke. Das Gemurmel wiederholt sich nicht hörbar: Jede Stufe besteht aus mehreren Aufnahmen, links und rechts laufen unabhängig voneinander, immer wieder an anderer Stelle und weich überblendet. Es geht durch denselben Raum wie die Menge und läuft auch ohne Eingang, also auch allein als Hintergrundmenge (MENGE auf null, EIGENE STIMME aus).
+
 ## Größen
 
 | GRÖSSE | Wann nehmen | Leute | Raum |
@@ -82,18 +85,20 @@ Beim Umschalten blendet TUMULT weich über, die Größe lässt sich also auch mi
 | Anzeige „DIE MENGE“ | Die Menge von oben: unten stehst du als Hörer, links/rechts ist das Stereobild, nach hinten wird es dumpfer und leiser. Jeder Punkt ist eine Stimme und leuchtet, wenn sie gerade ruft |
 | NEUE LEUTE | würfelt die Menge in der nächsten Sprechpause neu |
 
-**Unten, in drei Kästen**
+**Unten, in vier Kästen**
 
 | Kasten | Regler | Wirkung |
 |---|---|---|
 | **CHOR** | CHAOS | 0 % fast im Gleichschritt wie ein eingeübter Sprechchor, 100 % ein ungeordneter Haufen mit weit gestreutem Einsatz (im Stadion über eine Drittelsekunde) und unterschiedlichem Sprechtempo. Wie weit der Einsatz gestreut wird, hängt außerdem von der Größe ab |
 | | VIELFALT | 0 % klingen alle ähnlich wie eine Gruppe, 100 % mischen sich tiefere und höhere Lagen (Männer, Frauen, Jugendliche, bis etwa sechs Halbtöne) mit eigenen Klangfärbungen |
+| **GEMURMEL** | PEGEL | Lautstärke des Gemurmels im Hintergrund, ganz links aus |
+| | INTENSITÄT | 0 % leises Raunen, in der Mitte angespannt, 100 % aufgebrachte Menge; die fünf Stufen blenden stufenlos ineinander, je aufgebrachter, desto etwas lauter |
 | **RAUM** | RAUM | Wieviel Raum die Menge bekommt. Der Raum folgt der Größe. Er liegt auch auf der eigenen Stimme, damit sie in der Menge steht |
 | **MIX** | EIGENE STIMME | dein eingesprochenes Original (mit 500 ms Vorlauf), ganz links aus |
 | | OUTPUT | Gesamtpegel am Ausgang |
 
 **Presets** (erscheinen in der Preset-Liste des Hosts, setzen nur die Regler): Kneipe, Kleine Demo, Protestzug, Marktplatz,
-Großdemo auf dem Platz, Sporthalle, Stadion-Chor und Stadion-Jubel.
+Großdemo auf dem Platz, Sporthalle, Stadion-Chor und Stadion-Jubel. Sie stellen auch das Gemurmel passend ein.
 
 ## Anwendung
 
@@ -106,6 +111,8 @@ sauber der Chor im Takt ist.
 **Saal, der mitruft:** Mittel oder Groß, VIELFALT hoch, CHAOS hoch, ein bisschen mehr RAUM.
 
 **Kneipe, in der ein paar Leute zustimmend rufen:** Klein, MENGE etwas zurück, EIGENE STIMME als Hauptstimme dazu.
+
+**Nur Gemurmel:** MENGE auf null, EIGENE STIMME aus, PEGEL und INTENSITÄT nach Szene: leises Raunen vor der Kundgebung, angespannt beim Warten, aufgebracht kurz vor dem Ausbruch. Die Intensität lässt sich automatisieren, die Menge wird also im Lauf der Szene unruhiger.
 
 **Mit echten Aufnahmen:** Eine echte Menge oder ein Atmo-Teppich darf leise darunter liegen. TUMULT liefert die Rufe auf den Punkt.
 
@@ -121,12 +128,13 @@ Die Versionsnummer steht in der Datei `VERSION`, im Plugin-Kopf und im Namen der
 
 - **1.0** – Erste Version: der Stimmvervielfacher mit vier Größen, den Reglern MENGE, SYNCHRON, VIELFALT, RAUM, EIGENE STIMME und OUTPUT, einer Anzeige der Menge, NEUE LEUTE, acht Presets, Hell/Dunkel, skalierbarer Oberfläche und Hilfe. [Release-Hinweise](docs/releases/1.0.md).
 - **1.1** – Der Regler SYNCHRON heißt jetzt CHAOS und ist umgekehrt (0 % im Gleichschritt, 100 % ungeordnet). Der Einsatz streut viel weiter (Vorlauf 500 ms statt 200 ms), jede Stimme hat ein eigenes Sprechtempo, VIELFALT reicht weiter. [Release-Hinweise](docs/releases/1.1.md).
+- **1.2** – Neu: das Gemurmel im Hintergrund mit den Reglern PEGEL und INTENSITÄT (fünf Stufen, stufenlos überblendet), die Presets stellen es mit ein. Die Oberfläche ist etwas breiter geworden. [Release-Hinweise](docs/releases/1.2.md).
 
-Das Gemurmel im Hintergrund (Walla), das unter den Rufen eine aufgeregte Menge hörbar macht, folgt als zweiter Teil des Plugins.
 
 ## Aufbau
 
-- `Source/TumultDSP.h`: Klang-Engine (reines C++ ohne JUCE, samplefrei)
+- `Source/TumultDSP.h`: Klang-Engine (reines C++ ohne JUCE)
+- `Assets/murmur/`: die eingebetteten Gemurmel-Aufnahmen (Ogg Vorbis, mono)
 - `Source/PluginProcessor.*`, `Source/PluginEditor.*`: JUCE-Plugin und Oberfläche
 - `tools/render_demo.cpp`: rendert Hörbeispiele aus der echten Engine, mit Testsignal oder mit einer eigenen WAV-Aufnahme
 - `.github/workflows/build.yml`: Windows-Bau mit Tests und Stabilitätstest (pluginval) bei jeder Änderung; Release nur von Hand mit Haken „publish“, siehe [docs/CI.md](docs/CI.md) und [docs/PUBLISHING.md](docs/PUBLISHING.md)
@@ -142,7 +150,8 @@ Wenige Regler heißen nicht, dass hier etwas schnell zusammengeschustert wurde. 
 - **Saubere Übergänge:** Alle Regler gleiten, die Größe blendet weich über. Auch bei laufend automatisierten Reglern knackt nichts, getestet mit einem reinen Ton.
 - **Menge wird nur in Pausen neu gewürfelt:** Die Zusammensetzung ändert sich nie mitten im Ruf. Eine Instanz merkt sich ihre Menge im Projekt, dieselbe Aufnahme ergibt beim erneuten Abspielen dasselbe Ergebnis.
 - **Fester, gemeldeter Vorlauf:** 500 ms, exakt getestet, vom Host ausgeglichen.
-- **Kein Loop, keine Samples:** Die Menge entsteht ausschließlich aus deiner eigenen Aufnahme, es sind keine Audiodateien eingebettet.
+- **Die Rufe stammen ausschließlich aus deiner eigenen Aufnahme.** Eingebettet sind nur die Gemurmel-Aufnahmen für den Hintergrund (rund 2,5 MB). Sie werden beim ersten Laden einmal dekodiert und von allen Instanzen geteilt, im Audio-Thread wird nichts geladen oder angefordert.
+- **Gemurmel ohne hörbaren Loop:** Zufällige Reihenfolge, zufällige Stellen, weiche Überblendung von drei Sekunden, links und rechts unabhängig. Pegel, Helligkeit der Stufen, Blockunabhängigkeit und Knackfreiheit sind getestet.
 - **Pegel nach Messung abgestimmt:** MENGE 70 % entspricht bei allen Größen ungefähr der Lautheit der Eingangsstimme. Die Hörbeispiele werden aus derselben Engine gerendert.
 - **Rechenaufwand:** in meinen Messungen etwa 1 % eines Prozessorkerns für Klein und etwa 5 % für Stadion (48 kHz).
 

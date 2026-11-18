@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <BinaryData.h>
 
 static juce::String u8 (const char* s) { return juce::String (juce::CharPointer_UTF8 (s)); }
 
@@ -12,17 +13,55 @@ namespace
 {
 constexpr float kOwnMin = -60.0f, kOwnMax = 6.0f;   // EIGENE STIMME in dB, ganz links = aus
 
-struct Preset { const char* name; int size; float amount, chaos, variety, room, ownDb; };
+struct Preset { const char* name; int size; float amount, chaos, variety, room, ownDb, walla, wallaInt; };
 const Preset kPresets[] = {
-    { "Kneipe",                    0, 0.70f, 0.60f, 0.70f, 0.30f, -3.0f },
-    { "Kleine Demo",               1, 0.70f, 0.35f, 0.55f, 0.20f, -3.0f },
-    { "Protestzug",                1, 0.75f, 0.40f, 0.65f, 0.30f, -3.0f },
-    { "Marktplatz",                1, 0.70f, 0.75f, 0.90f, 0.45f, -6.0f },
-    { "Gro\xc3\x9f" "demo auf dem Platz", 2, 0.75f, 0.40f, 0.75f, 0.40f, -3.0f },
-    { "Sporthalle",                2, 0.75f, 0.50f, 0.80f, 0.55f, -6.0f },
-    { "Stadion-Chor",              3, 0.80f, 0.25f, 0.80f, 0.45f, -6.0f },
-    { "Stadion-Jubel",             3, 0.80f, 0.80f, 1.00f, 0.55f, -80.0f },
+    { "Kneipe",                    0, 0.70f, 0.60f, 0.70f, 0.30f, -3.0f, 0.50f, 0.25f },
+    { "Kleine Demo",               1, 0.70f, 0.35f, 0.55f, 0.20f, -3.0f, 0.35f, 0.50f },
+    { "Protestzug",                1, 0.75f, 0.40f, 0.65f, 0.30f, -3.0f, 0.45f, 0.70f },
+    { "Marktplatz",                1, 0.70f, 0.75f, 0.90f, 0.45f, -6.0f, 0.50f, 0.35f },
+    { "Gro\xc3\x9f" "demo auf dem Platz", 2, 0.75f, 0.40f, 0.75f, 0.40f, -3.0f, 0.45f, 0.75f },
+    { "Sporthalle",                2, 0.75f, 0.50f, 0.80f, 0.55f, -6.0f, 0.40f, 0.50f },
+    { "Stadion-Chor",              3, 0.80f, 0.25f, 0.80f, 0.45f, -6.0f, 0.35f, 0.60f },
+    { "Stadion-Jubel",             3, 0.80f, 0.80f, 1.00f, 0.55f, -80.0f, 0.40f, 0.90f },
 };
+// Die Gemurmel-Aufnahmen (eingebettet) werden einmal dekodiert und von allen Instanzen geteilt
+static std::shared_ptr<const tumult::MurmurBank> murmurBank()
+{
+    static const std::shared_ptr<const tumult::MurmurBank> bank = []() -> std::shared_ptr<const tumult::MurmurBank>
+    {
+        struct Item { int level; const char* data; int size; };
+        const Item items[] = {
+            { 0, BinaryData::L1_a_ogg, BinaryData::L1_a_oggSize }, { 0, BinaryData::L1_b_ogg, BinaryData::L1_b_oggSize },
+            { 0, BinaryData::L1_c_ogg, BinaryData::L1_c_oggSize }, { 0, BinaryData::L1_d_ogg, BinaryData::L1_d_oggSize },
+            { 1, BinaryData::L2_a_ogg, BinaryData::L2_a_oggSize }, { 1, BinaryData::L2_b_ogg, BinaryData::L2_b_oggSize },
+            { 1, BinaryData::L2_c_ogg, BinaryData::L2_c_oggSize }, { 1, BinaryData::L2_d_ogg, BinaryData::L2_d_oggSize },
+            { 2, BinaryData::L3_a_ogg, BinaryData::L3_a_oggSize },
+            { 3, BinaryData::L4_a_ogg, BinaryData::L4_a_oggSize }, { 3, BinaryData::L4_b_ogg, BinaryData::L4_b_oggSize },
+            { 3, BinaryData::L4_c_ogg, BinaryData::L4_c_oggSize },
+            { 4, BinaryData::L5_a_ogg, BinaryData::L5_a_oggSize }, { 4, BinaryData::L5_b_ogg, BinaryData::L5_b_oggSize } };
+        juce::OggVorbisAudioFormat format;
+        auto b = std::make_shared<tumult::MurmurBank>();
+        double rate = 0.0;
+        for (const auto& it : items)
+        {
+            std::unique_ptr<juce::AudioFormatReader> reader (format.createReaderFor (new juce::MemoryInputStream (it.data, (size_t) it.size, false), true));
+            if (reader == nullptr || reader->numChannels < 1 || reader->lengthInSamples < 1024) return nullptr;
+            if (rate == 0.0) rate = reader->sampleRate;
+            if (reader->sampleRate != rate) return nullptr;
+            const int n = (int) reader->lengthInSamples;
+            juce::AudioBuffer<float> buf (1, n);
+            reader->read (&buf, 0, n, 0, true, false);
+            std::vector<int16_t> y ((size_t) n);
+            for (int i = 0; i < n; ++i)
+                y[(size_t) i] = (int16_t) juce::roundToInt (juce::jlimit (-1.0f, 1.0f, buf.getSample (0, i)) * 32767.0f);
+            b->level[it.level].push_back (std::move (y));
+        }
+        b->rate = rate;
+        return b->usable() ? b : nullptr;
+    }();
+    return bank;
+}
+
 constexpr int kNumPresets = (int) (sizeof (kPresets) / sizeof (kPresets[0]));
 }
 
@@ -37,6 +76,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout TumultProcessor::createLayou
         [] (float v, int) { return String (v, 1) + " dB"; });
     auto ownText = AudioParameterFloatAttributes().withStringFromValueFunction (
         [] (float v, int) { return v <= kOwnMin + 0.05f ? String ("aus") : String (v, 1) + " dB"; });
+    auto wallaText = AudioParameterFloatAttributes().withStringFromValueFunction (
+        [] (float v, int) { return v <= 0.001f ? String ("aus") : String (roundToInt (v * 100.0f)) + " %"; });
+    auto intText = AudioParameterFloatAttributes().withStringFromValueFunction (
+        [] (float v, int) { const char* names[] = { "Raunen", "Gemurmel", "angespannt", "aufgebracht", "Tumult" };
+                            return String (names[juce::jlimit (0, 4, roundToInt (v * 4.0f))]); });
     auto chaosText = AudioParameterFloatAttributes().withStringFromValueFunction (
         [] (float v, int) { const int pct = roundToInt (v * 100.0f);
                             return pct <= 0 ? u8 ("im Gleichschritt") : pct >= 100 ? String ("totales Chaos") : String (pct) + " %"; });
@@ -50,6 +94,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout TumultProcessor::createLayou
                                                        NormalisableRange<float> (0.0f, 1.0f), 0.6f, percent));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "room", 1 }, "Raum",
                                                        NormalisableRange<float> (0.0f, 1.0f), 0.35f, percent));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "walla", 1 }, "Gemurmel",
+                                                       NormalisableRange<float> (0.0f, 1.0f), 0.0f, wallaText));
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "wallaInt", 1 }, u8 ("Intensit\xc3\xa4t"),
+                                                       NormalisableRange<float> (0.0f, 1.0f), 0.5f, intText));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "own", 1 }, "Eigene Stimme",
                                                        NormalisableRange<float> (kOwnMin, kOwnMax), -3.0f, ownText));
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "output", 1 }, "Output",
@@ -70,6 +118,8 @@ TumultProcessor::TumultProcessor()
     pRoom = apvts.getRawParameterValue ("room");
     pOwn = apvts.getRawParameterValue ("own");
     pOut = apvts.getRawParameterValue ("output");
+    pWalla = apvts.getRawParameterValue ("walla");
+    pWallaInt = apvts.getRawParameterValue ("wallaInt");
     // Jede Instanz bekommt ihre eigene Menge (zwei Spuren mit Tumult rufen nicht im Gleichschritt dieselben Leute)
     seed.store ((juce::Random::getSystemRandom().nextInt() | 1) & 0x7fffffff);
 }
@@ -77,6 +127,7 @@ TumultProcessor::TumultProcessor()
 void TumultProcessor::prepareToPlay (double sampleRate, int maxBlock)
 {
     engine.prepare (sampleRate, seed.load());
+    engine.setMurmurBank (murmurBank());   // wird beim ersten Mal dekodiert, nie im Audio-Thread
     const size_t n = (size_t) juce::jmax (maxBlock, 4096);
     scratchL.assign (n, 0.0f);
     scratchR.assign (n, 0.0f);
@@ -109,6 +160,8 @@ void TumultProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     p.chaos = pChaos->load();
     p.variety = pVariety->load();
     p.room = pRoom->load();
+    p.walla = pWalla->load();
+    p.wallaInt = pWallaInt->load();
     const float own = pOwn->load();
     p.ownDb = own <= kOwnMin + 0.05f ? -80.0f : own;   // ganz links = aus
     p.outDb = pOut->load();
@@ -164,6 +217,8 @@ void TumultProcessor::setCurrentProgram (int i)
     set ("chaos", pr.chaos);
     set ("variety", pr.variety);
     set ("room", pr.room);
+    set ("walla", pr.walla);
+    set ("wallaInt", pr.wallaInt);
     set ("own", pr.ownDb <= -60.0f ? kOwnMin : pr.ownDb);
 }
 
@@ -186,9 +241,9 @@ void TumultProcessor::setStateInformation (const void* data, int sizeInBytes)
         {
             auto state = juce::ValueTree::fromXml (*xml);
             uiTheme.store ((int) state.getProperty ("theme", 0) == 1 ? 1 : 0);
-            const int width = juce::jlimit (340, 2040, (int) state.getProperty ("uiW", 680));
+            const int width = juce::jlimit (340, 2040, (int) state.getProperty ("uiW", 820));
             uiWidth.store (width);
-            uiHeight.store (juce::roundToInt ((float) width * 420.0f / 680.0f));
+            uiHeight.store (juce::roundToInt ((float) width * 420.0f / 820.0f));
             currentProgram.store (juce::jlimit (0, kNumPresets - 1, (int) state.getProperty ("program", 0)));
             // Dieselbe Menge wie beim Speichern: die Zusammensetzung haengt am gespeicherten Startwert
             const auto saved = (juce::int64) state.getProperty ("seed", (juce::int64) 0);
