@@ -97,7 +97,7 @@ Beim Umschalten gleiten die Stimmenpegel und Filter; zwei vorreservierte Räume 
 | | OUTPUT | Gesamtpegel vor der Schutzsättigung am Ausgang; hohe Werte können den Klang verdichten |
 
 **Presets** (erscheinen in der Preset-Liste des Hosts, setzen nur die Regler): Kneipe, Kleine Demo, Protestzug, Marktplatz,
-Großdemo auf dem Platz, Sporthalle, Stadion-Chor, Stadion-Jubel und Ausgangslage. Die acht Szenen-Presets schalten auch das Gemurmel passend ein; Ausgangslage startet mit ausgeschaltetem Bett.
+Großdemo auf dem Platz, Sporthalle, Stadion-Chor, Stadion-Jubel und Ausgangslage. Die acht Szenen-Presets schalten auch das Gemurmel passend ein; Ausgangslage startet mit ausgeschaltetem Bett. Presets verändern OUTPUT nicht, damit dein eingestellter Gesamtpegel erhalten bleibt.
 
 ## Anwendung
 

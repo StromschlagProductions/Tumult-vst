@@ -3,7 +3,7 @@ name: Windows-VST3 bauen
 # Windows-Bau mit Regressionstests und pluginval (Strictness 8).
 #   - laeuft bei jedem Push auf main und bei Pull Requests (ausser reinen Doku-Aenderungen)
 #   - von Hand: Actions > "Windows-VST3 bauen" > "Run workflow"
-#   - ein Release entsteht NUR von Hand mit Haken "publish" und nur auf main (ein Push ist keine Freigabe)
+#   - Release nur mit ausdruecklichem Auftrag auf main: publish-Haken oder "release: Tumult <VERSION> ..."
 # Beschreibung: docs/CI.md und docs/PUBLISHING.md
 on:
   push:
