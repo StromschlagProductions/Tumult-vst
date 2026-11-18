@@ -449,7 +449,7 @@ private:
             // Eine nicht beteiligte Stimme, die schon ganz leise ist, braucht nicht gerechnet zu werden
             if (tL == 0.0f && tRr == 0.0f && q.gL < 1e-7f && q.gR < 1e-7f)
             {
-                q.gL = q.gR = 0.0f; q.vis *= 0.9f;
+                q.gL = q.gR = 0.0f; q.vis *= 0.995f;
                 q.delay = tD[i]; q.ratio = tR[i];   // unhoerbar: gleich auf den Zielwert, damit beim Zuschalten nichts gleitet
                 continue;
             }
@@ -495,7 +495,7 @@ private:
                 stageL[k] += x * (G0L + dL * (float) k);
                 stageR[k] += x * (G0R + dR * (float) k);
             }
-            q.vis = std::max (q.vis * 0.9f, peak * (q.gL + q.gR));
+            q.vis = std::max (q.vis * 0.995f, peak * (q.gL + q.gR));   // Huellkurve mit ca. 70 ms Abklingzeit
         }
         snap = false;
 

@@ -74,7 +74,7 @@ public:
         for (int i = 0; i < tumult::kMaxVoices; ++i)
         {
             if (engine.voiceOn (i) < 0.5f) continue;
-            const float pan = engine.voicePan (i), depth = engine.voiceDepth (i), level = engine.voiceLevel (i);
+            const float pan = engine.voicePan (i), depth = engine.voiceDepth (i), level = std::sqrt (engine.voiceLevel (i));
             const float x = area.getCentreX() + pan * 0.5f * area.getWidth();
             const float y = area.getBottom() - 8.0f - depth * (area.getHeight() - 14.0f);
             const float rad = 2.0f + 1.0f * (1.0f - depth) + 2.4f * level;
