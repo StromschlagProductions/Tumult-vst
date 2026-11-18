@@ -107,7 +107,7 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
     setupKnob (chaos, "chaos", "CHAOS");
     setupKnob (variety, "variety", "VIELFALT");
     setupKnob (walla, "walla", "PEGEL");
-    setupKnob (wallaInt, "wallaInt", "INTENSIT\xc3\x84T");
+    setupKnob (wallaInt, "wallaInt", u8 ("INTENSIT\xc3\x84T"));
     setupKnob (room, "room", "RAUM");
     setupKnob (own, "own", "EIGENE STIMME");
     setupKnob (output, "output", "OUTPUT");
@@ -356,8 +356,8 @@ void TumultEditor::resized()
     amount.slider.setBounds (278, 104, 124, 118);
 
     crowdLabel.setBounds (432, 84, 224, 18);
-    display.setBounds (432, 104, w - 24 - 420, 82);
-    rerollButton.setBounds (432, 192, w - 24 - 420, 26);
+    display.setBounds (432, 104, w - 444, 82);
+    rerollButton.setBounds (432, 192, w - 444, 26);
 
     auto placeKnob = [] (Knob& k, int x, int y, int cw)
     {
