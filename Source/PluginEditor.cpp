@@ -44,6 +44,7 @@ static juce::AttributedString buildHelp (juce::Colour text, juce::Colour accent,
 
     head ("Einrichten");
     body ("Du sprichst oder spielst einen Ruf einmal ein, zum Beispiel \xe2\x80\x9eWir wollen keine Mauer!\xe2\x80\x9c. TUMULT macht daraus eine Menschenmenge, die denselben Text ruft. Lege das Plugin direkt auf die Spur mit deiner Stimme (Mono oder Stereo). Die Menge ersetzt den Eingang; deine eigene Stimme steht als einzelner Regler daneben (EIGENE STIMME).");
+    body ("TUMULT kann eine echte Gruppenaufnahme mit mehreren Sprecherinnen und Sprechern nicht vollständig ersetzen. Es hilft, wenn keine weiteren Stimmen zur Verfügung stehen, oder ergänzt vorhandene Gruppenaufnahmen, um eine Menge dichter und größer wirken zu lassen.");
     note ("TUMULT arbeitet mit einem festen Vorlauf von 500 Millisekunden, damit die Menge auch vor deinem Einsatz anfangen darf. Der Host gleicht das automatisch aus. Wer mit eingeschaltetem Monitoring live einspricht, nimmt dafür besser die trockene Spur.");
 
     head ("GR\xc3\x96SSE");

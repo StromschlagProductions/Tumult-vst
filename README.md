@@ -10,6 +10,8 @@ Text ruft, zum Beispiel einen Protest-Sprechchor. Du sprichst „Wir wollen kein
 oder Stadion und hörst eine Menge, in der jeder ein bisschen früher oder später, höher oder tiefer, näher oder weiter weg ruft.
 Darunter kann ein Gemurmel laufen, von leisem Raunen bis zur aufgebrachten Menge, das die Rufe in eine lebendige Szene einbettet.
 
+TUMULT kann eine echte Gruppenaufnahme mit mehreren Sprecherinnen und Sprechern nicht vollständig ersetzen. Es hilft, wenn keine weiteren Stimmen zur Verfügung stehen, oder ergänzt vorhandene Gruppenaufnahmen, um eine Menge dichter und größer wirken zu lassen.
+
 **⬇ Download (Windows · VST3 · Stereo):** https://github.com/StromschlagProductions/Tumult-vst/releases/latest
 
 ## Warum es dieses Plugin gibt
