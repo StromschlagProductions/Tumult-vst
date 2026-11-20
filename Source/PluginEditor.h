@@ -128,8 +128,8 @@ private:
     CrowdDisplay display;
     juce::TextButton rerollButton;
     juce::Label wallaStage;
-    juce::TextButton wallaButton;
-    std::unique_ptr<APVTS::ButtonAttachment> wallaAttachment;
+    juce::TextButton wallaButton, choirButton;
+    std::unique_ptr<APVTS::ButtonAttachment> wallaAttachment, choirAttachment;
     juce::TextButton themeButton;
     juce::TextButton helpButton;
     HelpPanel helpScroll;

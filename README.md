@@ -89,7 +89,8 @@ Beim Umschalten gleiten die Stimmenpegel und Filter; zwei vorreservierte Räume 
 
 | Kasten | Regler | Wirkung |
 |---|---|---|
-| **CHOR** | CHAOS | 0 % fast im Gleichschritt wie ein eingeübter Sprechchor, 100 % ein ungeordneter Haufen mit weit gestreutem Einsatz (im Stadion über eine Drittelsekunde) und unterschiedlichem Sprechtempo. Wie weit der Einsatz gestreut wird, hängt außerdem von der Größe ab |
+| **CHOR** | AN / AUS | Schaltet die Menge ein oder aus. Aus: nur Gemurmel (mit Raum), und die Latenz von 500 ms entfällt; automatisierbar und im Projekt gespeichert. Am besten vor dem Abspielen umschalten, manche Hosts übernehmen die neue Latenz erst nach Stopp und Start |
+| | CHAOS | 0 % fast im Gleichschritt wie ein eingeübter Sprechchor, 100 % ein ungeordneter Haufen mit weit gestreutem Einsatz (im Stadion über eine Drittelsekunde) und unterschiedlichem Sprechtempo. Wie weit der Einsatz gestreut wird, hängt außerdem von der Größe ab |
 | | VIELFALT | 0 % klingen alle ähnlich wie eine Gruppe, 100 % entstehen stärker unterschiedliche Tonlagen (bis etwa sechs Halbtöne) mit eigenen Klangfärbungen; Alter und Geschlecht werden nicht unabhängig modelliert |
 | **GEMURMEL** | AN / AUS | Aktiviert das eigenständige Bett, auch auf einer leeren Spur ohne Aufnahme; automatisierbar und im Projekt gespeichert |
 | | PEGEL | Lautstärke des Gemurmels im Hintergrund, ganz links aus |
@@ -113,7 +114,7 @@ sauber der Chor im Takt ist.
 
 **Kneipe, in der ein paar Leute zustimmend rufen:** Klein, MENGE etwas zurück, EIGENE STIMME als Hauptstimme dazu.
 
-**Nur Gemurmel:** Eine leere Mono- oder Stereo-Audiospur anlegen, TUMULT als Insert einsetzen, MENGE auf null, EIGENE STIMME aus und GEMURMEL auf **AN**. PEGEL und INTENSITÄT nach Szene: leises Raunen vor der Kundgebung, angespannt beim Warten, aufgebracht kurz vor dem Ausbruch. Schalter, Pegel und Intensität lassen sich automatisieren. Die DAW muss das Plugin verarbeiten; das konkrete Stop-/Suspend-Verhalten hängt vom Host ab. TUMULT meldet bei aktiviertem Bett eine unbegrenzte Ausklingzeit.
+**Nur Gemurmel:** Eine leere Mono- oder Stereo-Audiospur anlegen, TUMULT als Insert einsetzen, CHOR auf **AUS** (dann gibt es auch keine Latenz), EIGENE STIMME aus und GEMURMEL auf **AN**. PEGEL und INTENSITÄT nach Szene: leises Raunen vor der Kundgebung, angespannt beim Warten, aufgebracht kurz vor dem Ausbruch. Schalter, Pegel und Intensität lassen sich automatisieren. Die DAW muss das Plugin verarbeiten; das konkrete Stop-/Suspend-Verhalten hängt vom Host ab. TUMULT meldet bei aktiviertem Bett eine unbegrenzte Ausklingzeit.
 
 **Mit echten Aufnahmen:** Eine echte Menge oder ein Atmo-Teppich darf leise darunter liegen. TUMULT liefert die Rufe auf den Punkt.
 
@@ -129,6 +130,7 @@ Die Versionsnummer steht in der Datei `VERSION`, im Plugin-Kopf und im Namen der
 
 - **1.0** – Erste Version: der Stimmvervielfacher mit vier Größen, den Reglern MENGE, SYNCHRON, VIELFALT, RAUM, EIGENE STIMME und OUTPUT, einer Anzeige der Menge, NEUE LEUTE, acht Presets, Hell/Dunkel, skalierbarer Oberfläche und Hilfe. [Release-Hinweise](docs/releases/1.0.md).
 - **1.1** – Der Regler SYNCHRON heißt jetzt CHAOS und ist umgekehrt (0 % im Gleichschritt, 100 % ungeordnet). Der Einsatz streut viel weiter (Vorlauf 500 ms statt 200 ms), jede Stimme hat ein eigenes Sprechtempo, VIELFALT reicht weiter. [Release-Hinweise](docs/releases/1.1.md).
+- **1.5** – Neuer Schalter CHOR AN/AUS: ohne Chor läuft nur das Gemurmel, und die Latenz von 500 ms entfällt. Bestehende Projekte laden mit Chor an wie bisher. [Release-Hinweise](docs/releases/1.5.md).
 - **1.4** – Ruhigeres, sporadisches Raunen bei 0 %, variablere Ausschnitte und getrennte Tonhöhen-/Klangfarbenvariation für sicher stimmhafte nahe Rufe. [Release-Hinweise](docs/releases/1.4.md), [Vergleichsbeispiele](docs/audio/README.md).
 - **1.3** – Eigenständiger GEMURMEL-Schalter, reparierte Werteingaben und Mono-Begrenzung, gespeicherte Besetzung, stabile Personen, aktive Sprachvariation, Stereo-Eigenstimme und überblendende Räume. [Release-Hinweise](docs/releases/1.3.md).
 - **1.2** – Neu: das Gemurmel im Hintergrund mit den Reglern PEGEL und INTENSITÄT (fünf Stufen, stufenlos überblendet), die Presets stellen es mit ein. Die Oberfläche ist etwas breiter geworden. [Release-Hinweise](docs/releases/1.2.md).
@@ -147,7 +149,7 @@ Die Versionsnummer steht in der Datei `VERSION`, im Plugin-Kopf und im Namen der
 
 Die Engine ist getrennt von JUCE testbar. Der Windows-Workflow baut VST3 und führt DSP-/Prozessortests sowie **pluginval Strictness 8** aus. Linux prüft die DSP-Tests zusätzlich mit AddressSanitizer und UndefinedBehaviorSanitizer.
 
-- Fester, dem Host gemeldeter Vorlauf von 500 ms; Eigenstimmen-Latenz ist bei 44,1 und 48 kHz getestet.
+- Dem Host gemeldeter Vorlauf von 500 ms (ohne Chor 0 ms); Eigenstimmen-Latenz ist bei 44,1 und 48 kHz getestet.
 - Gleiche Eingabe, gleicher Startzustand und gleiche Parameter ergeben blockunabhängige Ergebnisse. Ein beliebiger Transportstart stellt keinen vollständigen DSP-Snapshot wieder her.
 - Verarbeitung mit vorreservierten Puffern; Regressionstests überwachen C++-Allokationen im Audio-Callback.
 - Mono wird vor der letzten Ausgangsbegrenzung summiert. Der Stereoanteil der Eigenstimme bleibt erhalten; die Crowd selbst verwendet die Mono-Summe des Eingangs.

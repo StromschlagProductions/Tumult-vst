@@ -486,6 +486,38 @@ int main()
         CHECK (rms (a, 40000, a.size()) < 1e-6);
     }
 
+    // 15b) CHOR aus: keine Menge, keine gemeldete Latenz, die eigene Stimme geht direkt durch.
+    {
+        auto eHeap = std::make_unique<tumult::Engine>(); auto& e = *eHeap; e.prepare (48000, 7);
+        CHECK (e.hostLatencySamples() == 24000);
+        Params p; p.choirEnabled = false; p.amount = 1; p.ownDb = -80; p.room = 0; p.walla = 0;
+        std::vector<float> a (48000), b;
+        for (size_t i = 0; i < a.size(); ++i) a[i] = 0.3f * std::sin (0.05f * (float) i);
+        b = a;
+        e.process (a.data(), b.data(), (int) a.size(), p);
+        CHECK (e.hostLatencySamples() == 0);
+        CHECK (rms (a, 4000, a.size()) < 1e-6);               // keine Stimmen
+        p.ownDb = 0;
+        for (size_t i = 0; i < a.size(); ++i) a[i] = 0.3f * std::sin (0.05f * (float) i);
+        b = a;
+        e.process (a.data(), b.data(), (int) a.size(), p);
+        CHECK (rms (a, 2000, 3000) > 0.1);                    // sofort da, nicht erst nach 500 ms
+        p.choirEnabled = true;
+        for (size_t i = 0; i < a.size(); ++i) a[i] = 0.3f * std::sin (0.05f * (float) i);
+        b = a;
+        e.process (a.data(), b.data(), (int) a.size(), p);
+        CHECK (e.hostLatencySamples() == 24000);
+    }
+
+    // 15c) CHOR aus: Gemurmel laeuft weiter.
+    {
+        auto eHeap = std::make_unique<tumult::Engine>(); auto& e = *eHeap; e.prepare (48000, 7); e.setMurmurBank (testBank());
+        Params p; p.choirEnabled = false; p.amount = 1; p.ownDb = -80; p.room = 0; p.walla = 0.7f; p.wallaEnabled = true;
+        std::vector<float> a (96000), b = a;
+        e.process (a.data(), b.data(), (int) a.size(), p);
+        CHECK (rms (a, 48000, a.size()) > 0.001);
+    }
+
     // 16) Lange Stille verbraucht kein Tempo-Budget; gelesene Sprache entwickelt einen Versatz.
     for (double fs : { 44100.0, 48000.0 })
     {

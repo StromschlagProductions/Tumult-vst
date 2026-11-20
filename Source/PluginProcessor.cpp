@@ -137,6 +137,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout TumultProcessor::createLayou
     layout.add (std::make_unique<AudioParameterFloat> (ParameterID { "output", 1 }, "Output",
                                                        NormalisableRange<float> (-24.0f, 12.0f), 0.0f, decibel));
     layout.add (std::make_unique<BinarySwitch> (ParameterID { "wallaEnabled", 1 }, "Gemurmel an", false));
+    layout.add (std::make_unique<BinarySwitch> (ParameterID { "choirEnabled", 1 }, "Chor an", true));
     return layout;
 }
 
@@ -156,6 +157,8 @@ TumultProcessor::TumultProcessor()
     pWalla = apvts.getRawParameterValue ("walla");
     pWallaInt = apvts.getRawParameterValue ("wallaInt");
     pWallaEnabled = apvts.getRawParameterValue ("wallaEnabled");
+    pChoirEnabled = apvts.getRawParameterValue ("choirEnabled");
+    startTimerHz (10);
     // Jede Instanz bekommt ihre eigene Menge (zwei Spuren mit Tumult rufen nicht im Gleichschritt dieselben Leute)
     seed.store ((juce::Random::getSystemRandom().nextInt() | 1) & 0x7fffffff);
 }
@@ -167,7 +170,8 @@ void TumultProcessor::prepareToPlay (double sampleRate, int maxBlock)
     const size_t n = (size_t) juce::jmax (maxBlock, 4096);
     scratchL.assign (n, 0.0f);
     scratchR.assign (n, 0.0f);
-    setLatencySamples (engine.latencySamples());   // fester Vorlauf, der Host gleicht ihn aus
+    reportedLatency = pChoirEnabled->load() >= 0.5f ? engine.latencySamples() : 0;
+    setLatencySamples (reportedLatency.load());   // Vorlauf mit Chor, der Host gleicht ihn aus; ohne Chor 0
 }
 
 void TumultProcessor::reset() { engine.reset (seed.load()); }
@@ -216,6 +220,7 @@ void TumultProcessor::processAudio (juce::AudioBuffer<float>& buffer, bool bypas
     p.room = pRoom->load();
     p.walla = pWalla->load();
     p.wallaEnabled = pWallaEnabled->load() >= 0.5f;
+    p.choirEnabled = pChoirEnabled->load() >= 0.5f;
     p.wallaInt = pWallaInt->load();
     const float own = pOwn->load();
     p.ownDb = own <= kOwnMin + 0.05f ? -80.0f : own;   // ganz links = aus
@@ -248,6 +253,7 @@ void TumultProcessor::processAudio (juce::AudioBuffer<float>& buffer, bool bypas
             offset += count;
         }
     }
+    reportedLatency = engine.hostLatencySamples();   // der Timer meldet eine Aenderung ausserhalb des Audio-Threads
 }
 
 //==============================================================================
@@ -275,6 +281,7 @@ void TumultProcessor::setCurrentProgram (int i)
     set ("room", pr.room);
     set ("walla", pr.walla);
     set ("wallaEnabled", pr.enabled ? 1.0f : 0.0f);
+    set ("choirEnabled", 1.0f);
     set ("wallaInt", pr.wallaInt);
     set ("own", pr.ownDb <= -60.0f ? kOwnMin : pr.ownDb);
 }
@@ -331,6 +338,12 @@ void TumultProcessor::setStateInformation (const void* data, int sizeInBytes)
                     juce::ValueTree level ("PARAM"); level.setProperty ("id", "walla", nullptr);
                     level.setProperty ("value", 0.0f, nullptr); state.addChild (level, -1, nullptr);
                 }
+            }
+            // Projekte vor 1.5 kannten den CHOR-Schalter nicht: dort war der Chor immer an.
+            if (! state.getChildWithProperty ("id", "choirEnabled").isValid())
+            {
+                juce::ValueTree ch ("PARAM"); ch.setProperty ("id", "choirEnabled", nullptr);
+                ch.setProperty ("value", 1.0f, nullptr); state.addChild (ch, -1, nullptr);
             }
             apvts.replaceState (state);
         }
