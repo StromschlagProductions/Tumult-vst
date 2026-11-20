@@ -488,7 +488,7 @@ int main()
 
     // 15b) CHOR aus: keine Menge, keine gemeldete Latenz, die eigene Stimme geht direkt durch.
     {
-        tumult::Engine e; e.prepare (48000, 7);
+        auto eHeap = std::make_unique<tumult::Engine>(); auto& e = *eHeap; e.prepare (48000, 7);
         CHECK (e.hostLatencySamples() == 24000);
         Params p; p.choirEnabled = false; p.amount = 1; p.ownDb = -80; p.room = 0; p.walla = 0;
         std::vector<float> a (48000), b;
@@ -511,7 +511,7 @@ int main()
 
     // 15c) CHOR aus: Gemurmel laeuft weiter.
     {
-        tumult::Engine e; e.prepare (48000, 7); e.setMurmurBank (testBank());
+        auto eHeap = std::make_unique<tumult::Engine>(); auto& e = *eHeap; e.prepare (48000, 7); e.setMurmurBank (testBank());
         Params p; p.choirEnabled = false; p.amount = 1; p.ownDb = -80; p.room = 0; p.walla = 0.7f; p.wallaEnabled = true;
         std::vector<float> a (96000), b = a;
         e.process (a.data(), b.data(), (int) a.size(), p);
