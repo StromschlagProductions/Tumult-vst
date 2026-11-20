@@ -3,11 +3,11 @@
 #include "TumultDSP.h"
 #include <limits>
 
-class TumultProcessor : public juce::AudioProcessor
+class TumultProcessor : public juce::AudioProcessor, private juce::Timer
 {
 public:
     TumultProcessor();
-    ~TumultProcessor() override = default;
+    ~TumultProcessor() override { stopTimer(); }
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -46,6 +46,9 @@ public:
 
 private:
     void processAudio (juce::AudioBuffer<float>&, bool bypassed);
+    // Latenz-Meldung an den Host ausserhalb des Audio-Threads (CHOR aus = keine Latenz)
+    void timerCallback() override { const int d = reportedLatency.load(); if (getLatencySamples() != d) setLatencySamples (d); }
+    std::atomic<int> reportedLatency { 0 };
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
 
     tumult::Engine engine;
@@ -54,7 +57,7 @@ private:
     std::atomic<uint32_t> seed { 1 };
     std::atomic<float>* pSize = nullptr; std::atomic<float>* pAmount = nullptr; std::atomic<float>* pChaos = nullptr;
     std::atomic<float>* pVariety = nullptr; std::atomic<float>* pRoom = nullptr; std::atomic<float>* pOwn = nullptr;
-    std::atomic<float>* pOut = nullptr; std::atomic<float>* pWalla = nullptr; std::atomic<float>* pWallaInt = nullptr; std::atomic<float>* pWallaEnabled = nullptr;
+    std::atomic<float>* pOut = nullptr; std::atomic<float>* pWalla = nullptr; std::atomic<float>* pWallaInt = nullptr; std::atomic<float>* pWallaEnabled = nullptr; std::atomic<float>* pChoirEnabled = nullptr;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TumultProcessor)
 };

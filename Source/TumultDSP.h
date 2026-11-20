@@ -110,6 +110,7 @@ struct Params
     float variety = 0.6f;    // VIELFALT: 0 = klingen alle aehnlich, 1 = Maenner, Frauen, Jugendliche gemischt
     float room = 0.35f;      // RAUM: Anteil des Raums
     bool wallaEnabled = true; // separater Schalter; Pegel bleibt erhalten
+    bool choirEnabled = true; // CHOR an/aus: aus = nur Gemurmel (und Raum), keine Menge, keine Latenz
     float walla = 0.0f;      // GEMURMEL: Pegel des Gemurmel-Betts, 0 = aus
     float wallaInt = 0.5f;   // INTENSITAET: 0 = leises Raunen ... 1 = aufgebrachte Menge
     float ownDb = -3.0f;     // EIGENE STIMME in dB (-80 = aus)
@@ -377,12 +378,15 @@ public:
         std::fill (std::begin (stageR), std::end (stageR), 0.0f);
         env = 0.0f; silentRun = 1 << 29; rerollDone = false; snap = true; norm = 0.0f; visRef = 0.0f;
         ownCur = outCur = wetCur = bypassCur = 0.0f; ownInit = false;
+        choirCur = vgCur = 1.0f; choirOn = true; choirInit = false;
         rerolls = 0; visCounter = 0;
         initMurmur();
         for (int i = 0; i < kMaxVoices; ++i) { visLevel[i].store (0.0f); visOn[i].store (0.0f); }
     }
 
     int latencySamples() const { return latency; }
+    // Dem Host gemeldete Latenz: ohne Chor gibt es keinen Vorlauf
+    int hostLatencySamples() const { return choirOn ? latency : 0; }
     // Wuerfelt die Menge in der naechsten Sprechpause neu (Knopf "Neue Leute")
     void requestReroll() { manualReroll.store (true, std::memory_order_release); }
     void requestSeed (uint32_t seed) { pendingSeed.store (seed ? seed : 1u, std::memory_order_release); }
@@ -402,6 +406,9 @@ public:
         const float wetTarget = p.room * p.room * kRoomGain;
         if (! ownInit) { ownCur = ownTarget; outCur = outTarget; wetCur = wetTarget; ownInit = true; }
         const float aSmooth = 1.0f - std::exp (-1.0f / (0.015f * fs));
+        const float choirTarget = p.choirEnabled ? 1.0f : 0.0f;
+        if (! choirInit) { choirCur = vgCur = choirTarget; choirInit = true; }
+        choirOn = p.choirEnabled;
         rev.setSize (p.size);
 
         for (int i = 0; i < n; ++i)
@@ -411,15 +418,21 @@ public:
             const float il = std::isfinite (l[i]) ? l[i] : 0.0f;
             const float ir = std::isfinite (r[i]) ? r[i] : 0.0f;
             const float in = 0.5f * il + 0.5f * ir;
-            const float side = ownSide[(size_t) ownPos];
-            ownSide[(size_t) ownPos] = 0.5f * il - 0.5f * ir;
+            const float sideNow = 0.5f * il - 0.5f * ir;
+            const float sideDelayed = ownSide[(size_t) ownPos];
+            ownSide[(size_t) ownPos] = sideNow;
             if (++ownPos == latency) ownPos = 0;
             const float mag = std::fabs (in);
             env = std::max (mag, env * envRelease);
             if (env < kSilenceLevel) { if (silentRun < (1 << 30)) ++silentRun; }
             else { silentRun = 0; rerollDone = false; }
 
-            const float dry = ring[(wpos - (uint32_t) latency) & mask];
+            const float dryDelayed = ring[(wpos - (uint32_t) latency) & mask];
+            choirCur += aSmooth * (choirTarget - choirCur);
+            if (std::fabs (choirCur - choirTarget) < 1e-4f) choirCur = choirTarget;
+            // Mit Chor kommt die eigene Stimme um den Vorlauf verzoegert, ohne Chor direkt (weicher Uebergang)
+            const float dry = lerp (in, dryDelayed, choirCur);
+            const float side = lerp (sideNow, sideDelayed, choirCur);
             ring[wpos & mask] = in;
             analysis.push (in, wpos);
             ++wpos;
@@ -664,6 +677,19 @@ private:
         const bool publishNow = snap || ++visCounter >= 8;
         if (publishNow) visCounter = 0;
         snap = false;
+        {
+            // CHOR aus: die Stimmen werden weich ausgeblendet, das Gemurmel kommt danach dazu
+            const float target = p.choirEnabled ? 1.0f : 0.0f;
+            const float g0 = vgCur;
+            vgCur += (1.0f - std::exp (-(float) kChunk / (0.015f * fs))) * (target - vgCur);
+            if (std::fabs (vgCur - target) < 1e-4f) vgCur = target;
+            if (g0 != 1.0f || vgCur != 1.0f)
+                for (int k = 0; k < kChunk; ++k)
+                {
+                    const float g = g0 + (vgCur - g0) * (float) (k + 1) / (float) kChunk;
+                    stageL[k] *= g; stageR[k] *= g;
+                }
+        }
         renderMurmur (p);
 
         // Anzeige: Helligkeit relativ zur lautesten Stimme der letzten Sekunden (unabhaengig von MENGE und Eingangspegel)
@@ -931,6 +957,8 @@ private:
     bool rerollDone = false, snap = true, ownInit = false;
     std::atomic<bool> manualReroll { false };
     float bypassCur = 0.0f;
+    float choirCur = 1.0f, vgCur = 1.0f;
+    bool choirOn = true, choirInit = false;
     float norm = 0.0f, ownCur = 0.0f, outCur = 0.0f, wetCur = 0.0f, visRef = 0.0f;
     float driftDecay = 0.0003f, driftNoise = 0.0127f, filterStep = 0.001f;
     float aGain = 0.01f, aDelay = 0.001f, aRatio = 0.003f;

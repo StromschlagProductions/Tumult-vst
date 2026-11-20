@@ -59,6 +59,9 @@ static juce::AttributedString buildHelp (juce::Colour text, juce::Colour accent,
     head ("NEUE LEUTE");
     body ("W\xc3\xbcrfelt die Besetzung neu: Wer steht wo und hat welche Stimmlage. Das geschieht in der n\xc3\xa4" "chsten Sprechpause. Die gew\xc3\xa4hlte Besetzung wird im Projekt gespeichert. Von allein w\xc3\xbcrfelt TUMULT nach jeder l\xc3\xa4ngeren Pause neu (je nach CHAOS und Gr\xc3\xb6\xc3\x9f" "e rund eine halbe bis eine Sekunde Stille). Dabei variieren Einsatz, Beteiligung und Ausdruck; Personen und Positionen bleiben erhalten.");
 
+    head ("CHOR AN/AUS");
+    body ("Der Schalter oben im Kasten CHOR. Aus: Es läuft nur das Gemurmel (mit Raum), die Menge wird nicht erzeugt und die Latenz von 500 ms entfällt. Praktisch für eine Spur, die nur Hintergrund-Gemurmel liefert. Am besten vor dem Abspielen umschalten: Manche Hosts übernehmen die geänderte Latenz erst nach Stopp und Start.");
+
     head ("CHAOS");
     body ("Wie gleichm\xc3\xa4\xc3\x9fig die Menge ruft. Ganz links rufen die Leute fast im Gleichschritt, wie ein einge\xc3\xbc" "bter Sprechchor. Je weiter du aufdrehst, desto mehr streut der Einsatz: Manche rufen deutlich vor dir, andere erst eine Weile danach, und jeder hat sein eigenes Sprechtempo, einer etwas schneller, ein anderer etwas langsamer. Wie weit es streut, h\xc3\xa4ngt zus\xc3\xa4tzlich von der Gr\xc3\xb6\xc3\x9f" "e ab: in einem Stadion kommt der Ruf von weiter weg und ist weiter verschmiert.");
 
@@ -126,6 +129,13 @@ TumultEditor::TumultEditor (TumultProcessor& p) : AudioProcessorEditor (&p), pro
     wallaButton.setTooltip (u8 ("Gemurmel einschalten: funktioniert auch ohne Aufnahme auf einer leeren Spur. PEGEL bleibt beim Ausschalten erhalten. Automatisierbar."));
     content.addAndMakeVisible (wallaButton);
     wallaAttachment = std::make_unique<APVTS::ButtonAttachment> (processor.apvts, "wallaEnabled", wallaButton);
+
+    choirButton.setButtonText ("AN");
+    choirButton.onStateChange = [this] { choirButton.setButtonText (choirButton.getToggleState() ? "AN" : "AUS"); };
+    choirButton.setClickingTogglesState (true);
+    choirButton.setTooltip (u8 ("Chor ausschalten, wenn nur das Gemurmel gebraucht wird: dann entfällt auch die Latenz von 500 ms. Zum Umschalten die Wiedergabe anhalten, manche Hosts übernehmen die neue Latenz erst nach Stopp und Start."));
+    content.addAndMakeVisible (choirButton);
+    choirAttachment = std::make_unique<APVTS::ButtonAttachment> (processor.apvts, "choirEnabled", choirButton);
 
     // GROESSE: 4-Wege-Wahlschalter
     sizeLabel.setText (u8 ("GR\xc3\x96SSE"), juce::dontSendNotification);
@@ -334,7 +344,7 @@ void TumultEditor::paint (juce::Graphics& g)
 
     // Untere Kaesten: CHOR | GEMURMEL | RAUM | MIX
     struct Box { float x, w; const char* title; const char* note; };
-    const Box boxes[] = { { 12.0f, 220.0f, "CHOR", "wie die Menge ruft" },
+    const Box boxes[] = { { 12.0f, 220.0f, "CHOR", "" },
                           { 240.0f, 220.0f, "GEMURMEL", "" },
                           { 468.0f, 124.0f, "RAUM", "" },
                           { 600.0f, (float) W - 612.0f, "MIX", "" } };
@@ -394,6 +404,7 @@ void TumultEditor::resized()
     placeKnob (chaos, 14, 264, 108);
     placeKnob (variety, 122, 264, 108);
     wallaButton.setBounds (354, 240, 96, 21);
+    choirButton.setBounds (126, 240, 96, 21);
     // GEMURMEL: PEGEL, INTENSITAET
     placeKnob (walla, 242, 264, 108);
     placeKnob (wallaInt, 350, 264, 108);

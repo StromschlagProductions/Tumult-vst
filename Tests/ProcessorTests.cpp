@@ -155,7 +155,7 @@ int main()
         CHECK (q->getCurrentProgram() == 6);
         CHECK (q->uiTheme.load() == 1);
         CHECK (q->uiWidth.load() == 900);
-        for (auto* id : { "size", "amount", "chaos", "variety", "walla", "wallaInt", "wallaEnabled", "room", "own", "output" })
+        for (auto* id : { "size", "amount", "chaos", "variety", "walla", "wallaInt", "wallaEnabled", "choirEnabled", "room", "own", "output" })
             CHECK (q->apvts.getRawParameterValue (id)->load() == p->apvts.getRawParameterValue (id)->load());
         CHECK ((int) q->apvts.getRawParameterValue ("size")->load() == 3);
 
@@ -299,6 +299,13 @@ int main()
         auto oldXml = tree.createXml(); juce::AudioProcessor::copyXmlToBinary (*oldXml, legacy);
         q->setStateInformation (legacy.getData(), (int) legacy.getSize());
         CHECK (q->apvts.getRawParameterValue ("wallaEnabled")->load() == 1.0f);
+        // Zustaende vor 1.5 kennen keinen CHOR-Schalter: der Chor war immer an.
+        tree.removeChild (tree.getChildWithProperty ("id", "choirEnabled"), nullptr);
+        q->apvts.getParameter ("choirEnabled")->setValueNotifyingHost (0.0f);
+        juce::MemoryBlock legacy2;
+        auto oldXml2 = tree.createXml(); juce::AudioProcessor::copyXmlToBinary (*oldXml2, legacy2);
+        q->setStateInformation (legacy2.getData(), (int) legacy2.getSize());
+        CHECK (q->apvts.getRawParameterValue ("choirEnabled")->load() == 1.0f);
     }
 
     // Host-Bypass behaelt die gemeldeten 500 ms bei und erhaelt Stereo.
